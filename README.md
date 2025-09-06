@@ -2,7 +2,7 @@
 
 A comprehensive sports venue booking platform built with React.js and Node.js, featuring real-time availability, secure payments, and location-based search.
 
-## 🏟️ Features
+##  Features
 
 ### For Users
 - **Real-time Booking** - Book sports venues with instant confirmation
