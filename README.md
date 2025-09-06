@@ -161,7 +161,7 @@ This project is licensed under the MIT License.
 
 ##  Support
 
-For support, email support@bookmycourt.lk or create an issue in the repository.
+For support, email rahmathrumi7@gmail.com or create an issue in the repository.
 
 ##  Roadmap
 
