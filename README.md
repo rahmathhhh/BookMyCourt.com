@@ -5,19 +5,29 @@ A comprehensive web-based sports venue booking platform developed for Sri Lanka,
 ## Features
 
 ### For Users
+- **OTP Authentication** - Secure mobile number verification for account registration
 - **Real-time Booking** - Book sports venues with instant confirmation
-- **Location-based Search** - Find venues near you with geolocation
+- **Google Maps Integration** - Find venues with interactive map and location search
 - **Multiple Sports** - Support for tennis, badminton, cricket, football, and more
-- **Secure Payments** - Integrated PayHere payment gateway
-- **Slot Management** - Book up to 4 continuous hours
-- **Responsive Design** - Works on desktop and mobile
+- **Secure Payments** - Integrated PayHere payment gateway with SSL encryption
+- **Slot Management** - Book up to 4 continuous hours with concurrency control
+- **Review System** - Rate and review venues after completed bookings
+- **SMS Notifications** - Receive booking confirmations via SMS
+- **Responsive Design** - Mobile-first design optimized for Sri Lankan users
 
 ### For Venue Owners
-- **Venue Management** - Add and manage multiple venues
-- **Booking Management** - View and manage all bookings
-- **Staff Management** - Assign staff to venues
-- **Revenue Tracking** - Monitor booking revenue
-- **Availability Control** - Block specific dates/times
+- **Venue Management** - Add and manage multiple venues with image uploads
+- **Real-time Calendar** - Update venue availability in real-time
+- **Booking Management** - View and manage all bookings with status updates
+- **Staff Management** - Assign staff to venues with role-based access
+- **Revenue Tracking** - Monitor booking revenue and payment status
+- **Availability Control** - Block specific dates/times and manage slots
+
+### For Administrators
+- **User Management** - Manage all users, venue owners, and staff accounts
+- **System Monitoring** - Monitor system performance and booking analytics
+- **Payment Oversight** - Track all payment transactions and reconciliations
+- **Content Management** - Approve venues and manage system content
 
 ## Technology Stack
 
