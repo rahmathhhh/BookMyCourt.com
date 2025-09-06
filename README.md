@@ -1,8 +1,8 @@
-# Book My Court - Sports Venue Booking Platform
+# BookMyCourt.lk - Sports Venue Booking System
 
-A comprehensive sports venue booking platform built with React.js and Node.js, featuring real-time availability, secure payments, and location-based search.
+A comprehensive web-based sports venue booking platform developed for Sri Lanka, featuring real-time availability management, secure payment processing, and location-based venue discovery.
 
-##  Features
+## Features
 
 ### For Users
 - **Real-time Booking** - Book sports venues with instant confirmation
@@ -19,7 +19,7 @@ A comprehensive sports venue booking platform built with React.js and Node.js, f
 - **Revenue Tracking** - Monitor booking revenue
 - **Availability Control** - Block specific dates/times
 
-## 🚀 Tech Stack
+## Technology Stack
 
 ### Frontend
 - **React.js** - User interface
@@ -37,7 +37,7 @@ A comprehensive sports venue booking platform built with React.js and Node.js, f
 - **Multer** - File uploads
 - **PayHere** - Payment gateway
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 - Node.js (v14 or higher)
@@ -60,7 +60,7 @@ npm install
 npm start
 ```
 
-## 🔧 Environment Variables
+##  Environment Variables
 
 ### Backend (.env)
 ```env
@@ -73,14 +73,14 @@ PAYHERE_MERCHANT_ID=your_merchant_id
 PAYHERE_MERCHANT_SECRET=your_merchant_secret
 ```
 
-## 📱 Usage
+##  Usage
 
 1. **Browse Venues** - Search by location, sport type, or venue name
 2. **Select Time Slots** - Choose available 1-hour slots (up to 4 hours)
 3. **Book & Pay** - Complete booking with secure payment
 4. **Get Confirmation** - Receive instant booking confirmation
 
-## 🏗️ Project Structure
+##  Project Structure
 
 ```
 BookMyCourt.lk/
@@ -103,20 +103,20 @@ BookMyCourt.lk/
 └── README.md               # Project documentation
 ```
 
-## 🔐 Authentication
+##  Authentication
 
 - **JWT-based** authentication
 - **Role-based** access control (User, Venue Owner, Admin)
 - **Secure** password hashing with bcrypt
 
-## 💳 Payment Integration
+##  Payment Integration
 
 - **PayHere** payment gateway integration
 - **Secure** payment processing
 - **Real-time** payment status updates
 - **Automatic** booking confirmation
 
-## 🗄️ Database Schema
+##  Database Schema
 
 ### Key Tables
 - **users** - User accounts and profiles
@@ -125,7 +125,7 @@ BookMyCourt.lk/
 - **payments** - Payment transactions
 - **staff_venues** - Staff-venue relationships
 
-## 🚀 Deployment
+##  Deployment
 
 ### Backend Deployment
 1. Set up MySQL database
@@ -138,22 +138,22 @@ BookMyCourt.lk/
 2. Deploy to static hosting (Netlify, Vercel, etc.)
 3. Configure API endpoints
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Submit a pull request
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License.
 
-## 📞 Support
+##  Support
 
 For support, email support@bookmycourt.lk or create an issue in the repository.
 
-## 🎯 Roadmap
+##  Roadmap
 
 - [ ] Mobile app (React Native)
 - [ ] Advanced analytics dashboard
