@@ -8,17 +8,17 @@ class CleanupService {
       
       // For now, just return 0 since we don't have the findExpired method
       // This will be implemented in the next step
-      console.log(`🔍 No expired bookings to clean up yet`);
+      console.log(` No expired bookings to clean up yet`);
       return 0;
     } catch (error) {
-      console.error('❌ Error during cleanup:', error);
+      console.error(' Error during cleanup:', error);
       throw error;
     }
   }
   
   static async cleanupExpiredOTP() {
     try {
-      console.log('🧹 Starting cleanup of expired OTP bookings...');
+      console.log(' Starting cleanup of expired OTP bookings...');
       
       const now = new Date();
       const deletedCount = await Booking.destroy({
@@ -30,43 +30,47 @@ class CleanupService {
         }
       });
       
-      console.log(`✅ Cleaned up ${deletedCount} expired OTP bookings`);
+      console.log(` Cleaned up ${deletedCount} expired OTP bookings`);
       return deletedCount;
     } catch (error) {
-      console.error('❌ Error during OTP cleanup:', error);
+      console.error(' Error during OTP cleanup:', error);
       throw error;
     }
   }
 
   static async cleanupExpiredReservations() {
     try {
-      console.log('🧹 Starting cleanup of expired reservations...');
+      console.log(' Starting cleanup of expired reservations...');
       
       const now = new Date();
       const expiredReservations = await Booking.findExpiredReservations();
-      console.log(`🔍 Found ${expiredReservations.length} expired reservations`);
+      console.log(` Found ${expiredReservations.length} expired reservations`);
       
       if (expiredReservations.length > 0) {
-        // Mark them as expired
-        const updatePromises = expiredReservations.map(booking => {
-          booking.status = 'expired';
-          return booking.save();
+        // Deleting expired reservations completely since they're no longer valid
+        const deletedCount = await Booking.destroy({
+          where: {
+            status: 'pending',
+            otpExpiresAt: {
+              [Op.lt]: now
+            }
+          }
         });
-        await Promise.all(updatePromises);
         
-        console.log(`✅ Cleaned up ${expiredReservations.length} expired reservations`);
+        console.log(`✅ Deleted ${deletedCount} expired reservations`);
+        return deletedCount;
       }
       
-      return expiredReservations.length;
+      return 0;
     } catch (error) {
-      console.error('❌ Error during reservation cleanup:', error);
+      console.error(' Error during reservation cleanup:', error);
       throw error;
     }
   }
   
   static async runFullCleanup() {
     try {
-      console.log('🚀 Starting full cleanup process...');
+      console.log(' Starting full cleanup process...');
       
       const [expiredCount, otpCount, reservationCount] = await Promise.all([
         this.cleanupExpiredBookings(),
@@ -74,11 +78,11 @@ class CleanupService {
         this.cleanupExpiredReservations()
       ]);
       
-      console.log(`✅ Full cleanup completed: ${expiredCount} expired bookings, ${otpCount} expired OTP bookings, ${reservationCount} expired reservations`);
+      console.log(` Full cleanup completed: ${expiredCount} expired bookings, ${otpCount} expired OTP bookings, ${reservationCount} expired reservations`);
       
       return { expiredCount, otpCount, reservationCount };
     } catch (error) {
-      console.error('❌ Full cleanup failed:', error);
+      console.error(' Full cleanup failed:', error);
       throw error;
     }
   }

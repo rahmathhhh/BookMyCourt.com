@@ -16,10 +16,7 @@ const Venue = sequelize.define('Venue', {
       len: [2, 100]
     }
   },
-  description: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
+
   sportType: {
     type: DataTypes.ENUM('badminton', 'tennis', 'basketball', 'volleyball', 'football', 'cricket', 'rugby', 'hockey', 'table-tennis', 'squash', 'other'),
     allowNull: false
@@ -32,10 +29,7 @@ const Venue = sequelize.define('Venue', {
     type: DataTypes.STRING(50),
     allowNull: false
   },
-  postalCode: {
-    type: DataTypes.STRING(10),
-    allowNull: true
-  },
+
   latitude: {
     type: DataTypes.DECIMAL(10, 8),
     allowNull: false
@@ -51,20 +45,7 @@ const Venue = sequelize.define('Venue', {
       is: /^[\+]?[0-9\s\-\(\)]{7,15}$/
     }
   },
-  email: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-    validate: {
-      isEmail: true
-    }
-  },
-  website: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-    validate: {
-      isUrl: true
-    }
-  },
+
   openingHours: {
     type: DataTypes.JSON,
     allowNull: false,
@@ -78,10 +59,7 @@ const Venue = sequelize.define('Venue', {
       sunday: { open: '06:00', close: '22:00' }
     }
   },
-  amenities: {
-    type: DataTypes.JSON,
-    defaultValue: []
-  },
+
   images: {
     type: DataTypes.JSON,
     defaultValue: []
@@ -93,48 +71,7 @@ const Venue = sequelize.define('Venue', {
       min: 0
     }
   },
-  peakPrice: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    validate: {
-      min: 0
-    }
-  },
-  currency: {
-    type: DataTypes.STRING(3),
-    defaultValue: 'LKR'
-  },
-  capacity: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    validate: {
-      min: 1
-    }
-  },
-  surfaceType: {
-    type: DataTypes.ENUM('hard', 'clay', 'grass', 'synthetic', 'wooden', 'concrete', 'other'),
-    allowNull: true
-  },
-  isIndoor: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  hasLighting: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  hasParking: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  hasShower: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  hasEquipment: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
+
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
@@ -151,34 +88,7 @@ const Venue = sequelize.define('Venue', {
     type: DataTypes.INTEGER,
     defaultValue: 0
   },
-  ownerId: {
-    type: DataTypes.UUID,
-    allowNull: false
-  },
-  bookingAdvanceDays: {
-    type: DataTypes.INTEGER,
-    defaultValue: 30,
-    validate: {
-      min: 1,
-      max: 365
-    }
-  },
-  cancellationPolicy: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  rules: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  featured: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  verified: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  }
+
 }, {
   tableName: 'venues',
   indexes: [
@@ -219,7 +129,7 @@ Venue.prototype.getCurrentPrice = function() {
   const now = new Date();
   const hour = now.getHours();
   
-  // Peak hours: 18:00-22:00 (6 PM - 10 PM)
+  // Peak hours: 18:00-22:00 (6 PM - 10 PM) not yet implemented
   if (hour >= 18 && hour < 22) {
     return this.peakPrice || this.basePrice;
   }
@@ -229,7 +139,7 @@ Venue.prototype.getCurrentPrice = function() {
 
 // Class methods
 Venue.findByLocation = function(lat, lng, radius = 10) {
-  // Simple distance calculation (can be improved with proper geospatial queries)
+  // Simple distance calculation 
   return this.findAll({
     where: {
       isActive: true

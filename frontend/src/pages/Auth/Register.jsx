@@ -19,6 +19,7 @@ const Register = () => {
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [otpError, setOtpError] = useState(null);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [otpSuccess, setOtpSuccess] = useState(false);
   const [registrationData, setRegistrationData] = useState(null);
   const navigate = useNavigate();
 
@@ -27,6 +28,18 @@ const Register = () => {
     setForm({ ...form, [name]: value });
     setFormError(null);
     clearError();
+
+    // Phone number validation - must start with +94
+    if (name === 'phone') {
+      if (value && !value.startsWith('+94')) {
+        setFormError('Phone number must start with +94 (e.g., +94771234567)');
+        return;
+      }
+      if (value && value.startsWith('0')) {
+        setFormError('Phone number cannot start with 0. Use +94 format (e.g., +94771234567)');
+        return;
+      }
+    }
 
     // Calculate password strength
     if (name === 'password') {
@@ -64,13 +77,21 @@ const Register = () => {
       setFormError('Please choose a stronger password.');
       return;
     }
+    if (!form.phone.startsWith('+94')) {
+      setFormError('Phone number must start with +94 (e.g., +94771234567)');
+      return;
+    }
+    if (form.phone.startsWith('0')) {
+      setFormError('Phone number cannot start with 0. Use +94 format (e.g., +94771234567)');
+      return;
+    }
     
     try {
       setFormError(null);
       const res = await register(form);
       if (res.success) {
         // Store registration data and show OTP modal
-        setRegistrationData(res);
+        setRegistrationData(res.registrationData);
         setShowOTPModal(true);
       }
     } catch (error) {
@@ -83,22 +104,32 @@ const Register = () => {
       setOtpLoading(true);
       setOtpError(null);
       
-      // Send OTP with user ID from registration
-      const result = await verifyOTP(otp, registrationData?.user?.id);
+      // Send OTP with registration data
+      const result = await verifyOTP(otp, registrationData);
       
       if (result.success) {
-        setShowOTPModal(false);
-        // Navigate after successful OTP verification
-        let redirectTo = '/';
-        try { redirectTo = localStorage.getItem('redirectTo') || '/'; } catch {}
-        try { localStorage.removeItem('redirectTo'); } catch {}
+        // Show success message before closing modal
+        setOtpError(null);
+        setOtpLoading(false);
+        setOtpSuccess(true);
+        
+        // Show success message , then navigate
+        setTimeout(() => {
+          setShowOTPModal(false);
+          setOtpSuccess(false);
+          
+          // Navigate after successful OTP verification
+          let redirectTo = '/';
+          try { redirectTo = localStorage.getItem('redirectTo') || '/'; } catch {}
+          try { localStorage.removeItem('redirectTo'); } catch {}
 
-        if (!redirectTo || redirectTo === '/') {
-          const role = registrationData?.user?.role || user?.role;
-          if (role === 'admin' || role === 'staff') redirectTo = '/dashboard';
-          else redirectTo = '/bookings';
-        }
-        navigate(redirectTo);
+          if (!redirectTo || redirectTo === '/') {
+            const role = registrationData?.user?.role || user?.role;
+            if (role === 'admin' || role === 'staff') redirectTo = '/dashboard';
+            else redirectTo = '/bookings';
+          }
+          navigate(redirectTo);
+        }, 2000);
       } else {
         setOtpError('Invalid OTP. Please try again.');
       }
@@ -126,7 +157,20 @@ const Register = () => {
         {/* Header */}
         <div className="text-center">
           <div className="mx-auto h-16 w-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mb-6">
-            <span className="text-3xl text-white">🏟️</span>
+            <svg className="w-10 h-10" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="60" cy="60" r="58" fill="#FFFFFF" opacity="0.9"/>
+              <rect x="25" y="35" width="70" height="50" rx="8" fill="#2563EB" opacity="0.8"/>
+              <line x1="60" y1="35" x2="60" y2="85" stroke="#FFFFFF" strokeWidth="2"/>
+              <circle cx="60" cy="60" r="12" fill="none" stroke="#FFFFFF" strokeWidth="2"/>
+              <line x1="25" y1="50" x2="25" y2="70" stroke="#FFFFFF" strokeWidth="3"/>
+              <line x1="95" y1="50" x2="95" y2="70" stroke="#FFFFFF" strokeWidth="3"/>
+              <circle cx="40" cy="25" r="6" fill="#F59E0B"/>
+              <path d="M34 25 Q40 20 46 25" stroke="#F59E0B" strokeWidth="2" fill="none"/>
+              <circle cx="80" cy="25" r="6" fill="#10B981"/>
+              <path d="M74 25 Q80 20 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+              <path d="M74 25 Q80 30 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+              <text x="60" y="105" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="#2563EB">BC</text>
+            </svg>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Join Book My Court</h2>
           <p className="text-gray-600">
@@ -205,8 +249,9 @@ const Register = () => {
             {/* Phone Field */}
             <div>
               <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">
-                Phone Number
+                Phone Number <span className="text-red-500">*</span>
               </label>
+              <p className="text-xs text-gray-500 mb-2">Must start with +94 (e.g., +94771234567)</p>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -221,7 +266,7 @@ const Register = () => {
                   value={form.phone}
                   onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
-                  placeholder="Enter your phone number"
+                  placeholder="+94771234567"
                 />
               </div>
             </div>
@@ -374,6 +419,7 @@ const Register = () => {
          message={`Please enter the 6-digit OTP sent to ${form.phone}`}
          loading={otpLoading}
          error={otpError}
+         success={otpSuccess}
          resendOTP={handleResendOTP}
          countdown={0}
        />

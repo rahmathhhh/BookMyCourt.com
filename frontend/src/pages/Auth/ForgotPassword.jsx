@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../services/authService';
+import { authService } from '../../services/authService';
 
 const ForgotPassword = () => {
   const [phone, setPhone] = useState('');
@@ -27,7 +27,7 @@ const ForgotPassword = () => {
     setMessage('');
 
     try {
-      const response = await api.post('/auth/forgot-password', { phone });
+      const response = await authService.forgotPassword(phone);
       setMessage('OTP sent to your phone number!');
       setStep(2);
     } catch (err) {
@@ -48,7 +48,7 @@ const ForgotPassword = () => {
     setError('');
 
     try {
-      const response = await api.post('/auth/verify-reset-otp', { phone, otp });
+      const response = await authService.verifyResetOTP(phone, otp);
       setMessage('OTP verified! Set your new password.');
       setStep(3);
     } catch (err) {
@@ -103,11 +103,7 @@ const ForgotPassword = () => {
     setError('');
 
     try {
-      const response = await api.post('/auth/reset-password', { 
-        phone, 
-        otp, 
-        newPassword 
-      });
+      const response = await authService.resetPassword(phone, otp, newPassword);
       setMessage('Password reset successfully! Redirecting to login...');
       setTimeout(() => {
         window.location.href = '/login';
@@ -123,7 +119,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     setError('');
     try {
-      await api.post('/auth/forgot-password', { phone });
+      await authService.forgotPassword(phone);
       setMessage('OTP resent successfully!');
     } catch (err) {
       setError('Failed to resend OTP. Please try again.');
@@ -185,7 +181,7 @@ const ForgotPassword = () => {
 
         {/* Form Container */}
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          {/* Step 1: Phone Number */}
+          {/* Step 1- the Phone Number */}
           {step === 1 && (
             <form onSubmit={handlePhoneSubmit} className="space-y-6">
               <div>
@@ -231,7 +227,7 @@ const ForgotPassword = () => {
             </form>
           )}
 
-          {/* Step 2: OTP Verification */}
+          {/* Step 2-  OTP Verification */}
           {step === 2 && (
             <form onSubmit={handleOtpSubmit} className="space-y-6">
               <div>
@@ -301,7 +297,7 @@ const ForgotPassword = () => {
             </form>
           )}
 
-          {/* Step 3: New Password */}
+          {/* Step 3- New Password */}
           {step === 3 && (
             <form onSubmit={handlePasswordSubmit} className="space-y-6">
               <div>
@@ -342,7 +338,7 @@ const ForgotPassword = () => {
                   </button>
                 </div>
                 
-                {/* Password Strength Indicator */}
+                {/* Password Strength  */}
                 {newPassword && (
                   <div className="mt-2">
                     <div className="flex items-center justify-between text-sm">

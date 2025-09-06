@@ -29,8 +29,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Only redirect if it's not a login attempt (to prevent redirect on login failure)
+      const isLoginAttempt = error.config?.url?.includes('/auth/login');
+      if (!isLoginAttempt) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -58,8 +62,13 @@ export const authService = {
   },
 
   // Verify OTP
-  verifyOTP: async (otp, userId) => {
-    return await api.post('/auth/verify-otp', { otp, userId });
+  verifyOTP: async (otp, registrationData) => {
+    return await api.post('/auth/verify-otp', { 
+      otp, 
+      email: registrationData.email,
+      phone: registrationData.phone,
+      registrationData 
+    });
   },
 
   // Resend OTP
@@ -67,18 +76,19 @@ export const authService = {
     return await api.post('/auth/resend-otp', { userId });
   },
 
-  // Forgot password
+  // Forgot Password
   forgotPassword: async (phone) => {
     return await api.post('/auth/forgot-password', { phone });
   },
 
-  // Reset password
+  // Verify Reset OTP
+  verifyResetOTP: async (phone, otp) => {
+    return await api.post('/auth/verify-reset-otp', { phone, otp });
+  },
+
+  // Reset Password
   resetPassword: async (phone, otp, newPassword) => {
-    return await api.post('/auth/reset-password', {
-      phone,
-      otp,
-      newPassword
-    });
+    return await api.post('/auth/reset-password', { phone, otp, newPassword });
   }
 };
 

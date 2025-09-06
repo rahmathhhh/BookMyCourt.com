@@ -1,0 +1,25 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark blue background with rounded corners -->
+  <rect x="0" y="0" width="120" height="120" rx="20" fill="#2563EB"/>
+  
+  <!-- Light gray circular badge -->
+  <circle cx="60" cy="60" r="50" fill="#F3F4F6"/>
+  
+  <!-- Blue sports court -->
+  <rect x="30" y="40" width="60" height="40" rx="6" fill="#2563EB"/>
+  
+  <!-- Court markings -->
+  <line x1="60" y1="40" x2="60" y2="80" stroke="#FFFFFF" stroke-width="2"/>
+  <circle cx="60" cy="60" r="8" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  
+  <!-- Goal lines -->
+  <line x1="30" y1="50" x2="30" y2="70" stroke="#FFFFFF" stroke-width="3"/>
+  <line x1="90" y1="50" x2="90" y2="70" stroke="#FFFFFF" stroke-width="3"/>
+  
+  <!-- Team/Player indicators -->
+  <circle cx="45" cy="25" r="5" fill="#F59E0B"/>
+  <circle cx="75" cy="25" r="5" fill="#10B981"/>
+  
+  <!-- BC Text -->
+  <text x="60" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#93C5FD">BC</text>
+</svg>

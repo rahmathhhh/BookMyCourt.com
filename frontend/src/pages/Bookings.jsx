@@ -10,6 +10,9 @@ const Bookings = () => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [user, setUser] = useState(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 0, review: '' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,12 +28,16 @@ const Bookings = () => {
         }
         
         const response = await api.get('/auth/me');
+        // console.log(' /auth/me response:', response.data);
         
         if (response.data && response.data.user) {
+          // console.log(' Setting user from response.data.user:', response.data.user);
           setUser(response.data.user);
         } else if (response.data && response.data.data && response.data.data.user) {
+          // console.log(' Setting user from response.data.data.user:', response.data.data.user);
           setUser(response.data.data.user);
         } else {
+          // console.log(' Invalid user data structure:', response.data);
           setError('Invalid user data received from server');
           setLoading(false);
         }
@@ -66,14 +73,14 @@ const Bookings = () => {
       const response = await api.get('/admin/venues');
       setVenues(response.data.data.venues || []);
     } catch (err) {
-      console.error('Failed to fetch venues:', err);
+      // console.error('Failed to fetch venues:', err);
     }
   };
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      setError(''); // Clear any previous errors
+      setError(''); // to clear any previous errors
       let endpoint = '/bookings';
       
       if (user?.role === 'admin') {
@@ -89,10 +96,10 @@ const Bookings = () => {
         endpoint = '/bookings/my-bookings';
       }
       
-      console.log('🔍 User role detected:', user?.role);
-      console.log('🔍 Calling endpoint:', endpoint, 'for user role:', user?.role);
+      // console.log(' User role detected:', user?.role);
+      // console.log(' Calling endpoint:', endpoint, 'for user role:', user?.role);
       const response = await api.get(endpoint);
-      console.log('🔍 Response received:', response.data);
+      // console.log(' Response received:', response.data);
       
       // Handle different response structures
       let bookingsData = [];
@@ -107,11 +114,11 @@ const Bookings = () => {
       } else if (response.data) {
         bookingsData = response.data;
       }
-      console.log('🔍 Processed bookings data:', bookingsData);
+      // console.log(' Processed bookings data:', bookingsData);
       setBookings(Array.isArray(bookingsData) ? bookingsData : []);
       
     } catch (err) {
-      console.error('❌ Failed to fetch bookings:', err);
+      // console.error(' Failed to fetch bookings:', err);
       setError(err.response?.data?.message || err.message || 'Failed to fetch bookings');
       setBookings([]); // Reset bookings on error
       
@@ -132,6 +139,83 @@ const Bookings = () => {
       fetchBookings();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to cancel booking');
+    }
+  };
+
+  const handlePayNow = async (bookingId) => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Initiating payment for the booking
+      const response = await api.post(`/payments/initiate`, { bookingId });
+      
+      if (response.data.success) {
+        // Redirect to PayHere payment gateway
+        const paymentData = response.data.data;
+        
+        // Load PayHere SDK
+        if (!window.payhere) {
+          const script = document.createElement('script');
+          script.src = 'https://sandbox.payhere.lk/pay/payhere.lk.js';
+          script.async = true;
+          document.head.appendChild(script);
+          
+          // Wait for PayHere to load
+          const checkPayHere = setInterval(() => {
+            if (window.payhere && window.payhere.startPayment) {
+              clearInterval(checkPayHere);
+              window.payhere.startPayment(paymentData);
+            }
+          }, 100);
+        } else {
+          window.payhere.startPayment(paymentData);
+        }
+      } else {
+        setError(response.data.message || 'Failed to initiate payment');
+      }
+    } catch (err) {
+      // console.error('Payment initiation error:', err);
+      setError(err.response?.data?.message || 'Failed to initiate payment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReviewBooking = (bookingId) => {
+    setSelectedBookingId(bookingId);
+    setReviewForm({ rating: 0, review: '' });
+    setShowReviewModal(true);
+  };
+
+  const handleSubmitReview = async () => {
+    if (reviewForm.rating === 0) {
+      setError('Please select a rating');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await api.post(`/bookings/${selectedBookingId}/review`, {
+        rating: reviewForm.rating,
+        review: reviewForm.review
+      });
+      
+      if (response.data.success) {
+        setSuccessMsg('Review submitted successfully!');
+        setShowReviewModal(false);
+        setReviewForm({ rating: 0, review: '' });
+        fetchBookings(); // Refresh bookings to show updated review
+      } else {
+        setError(response.data.message || 'Failed to submit review');
+      }
+    } catch (err) {
+      // console.error('Review submission error:', err);
+      setError(err.response?.data?.message || 'Failed to submit review');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -212,19 +296,10 @@ const Bookings = () => {
     );
   }
 
-  // Debug logging
-  console.log('🔍 Bookings component state:', { 
-    user: user?.role, 
-    loading, 
-    bookingsCount: bookings.length, 
-    selectedVenue,
-    error 
-  });
-
-  // Manual user fetch function
+  // Manual user fetch function for testing
   const manualFetchUser = async () => {
     try {
-      console.log('🔍 Manual user fetch...');
+      // console.log(' Manual user fetch...');
       setLoading(true);
       setError('');
       
@@ -236,7 +311,7 @@ const Bookings = () => {
       }
       
       const response = await api.get('/auth/me');
-      console.log('🔍 Manual fetch response:', response.data);
+      // console.log(' Manual fetch response:', response.data);
       
       if (response.data && response.data.user) {
         setUser(response.data.user);
@@ -246,7 +321,7 @@ const Bookings = () => {
         setError('Invalid user data structure');
       }
     } catch (err) {
-      console.error('❌ Manual user fetch failed:', err);
+      // console.error(' Manual user fetch failed:', err);
       setError(err.message || 'Failed to fetch user');
     } finally {
       setLoading(false);
@@ -418,7 +493,7 @@ const Bookings = () => {
                     </div>
                     <div className="flex items-center">
                       <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                       </svg>
                       {booking.players} player{booking.players > 1 ? 's' : ''}
                     </div>
@@ -436,19 +511,46 @@ const Bookings = () => {
                       </p>
                     </div>
                   )}
+                  {booking.rating && (
+                    <div className="mt-4 p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                      <div className="flex items-center mb-2">
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <svg key={i} className={`w-4 h-4 ${i < booking.rating ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg>
+                          ))}
+                        </div>
+                        <span className="ml-2 text-sm font-medium text-gray-700">{booking.rating}/5</span>
+                      </div>
+                      {booking.review && (
+                        <p className="text-sm text-gray-600 italic">"{booking.review}"</p>
+                      )}
+                    </div>
+                  )}
                   <div className="mt-6 flex space-x-2">
-                    <button
-                      className="flex-1 px-3 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50"
-                      onClick={() => window.open(`/venues/${booking.venueId}`, '_blank')}
-                    >
-                      View Venue
-                    </button>
-                    {user?.role === 'user' && booking.status === 'confirmed' && (
+                    {user?.role === 'user' && booking.status === 'pending' ? (
                       <button
-                        className="flex-1 px-3 py-2 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50"
-                        onClick={() => handleCancelBooking(booking.id)}
+                        className="flex-1 px-3 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-md hover:bg-green-700"
+                        onClick={() => handlePayNow(booking.id)}
                       >
-                        Cancel
+                        Pay Now
+                      </button>
+                    ) : (
+                      <button
+                        className="flex-1 px-3 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50"
+                        onClick={() => window.open(`/venues/${booking.venueId}`, '_blank')}
+                      >
+                        View Venue
+                      </button>
+                    )}
+
+                    {user?.role === 'user' && booking.status === 'completed' && !booking.rating && (
+                      <button
+                        className="flex-1 px-3 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50"
+                        onClick={() => handleReviewBooking(booking.id)}
+                      >
+                        Review
                       </button>
                     )}
                   </div>
@@ -458,6 +560,76 @@ const Bookings = () => {
         </div>
         )}
       </div>
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Rate Your Experience</h3>
+            
+            {/* Star Rating */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Rating</label>
+              <div className="flex space-x-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                    className={`text-3xl transition-colors ${
+                      star <= reviewForm.rating 
+                        ? 'text-yellow-400' 
+                        : 'text-gray-300 hover:text-yellow-300'
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                {reviewForm.rating === 0 && 'Select a rating'}
+                {reviewForm.rating === 1 && 'Poor'}
+                {reviewForm.rating === 2 && 'Fair'}
+                {reviewForm.rating === 3 && 'Good'}
+                {reviewForm.rating === 4 && 'Very Good'}
+                {reviewForm.rating === 5 && 'Excellent'}
+              </p>
+            </div>
+
+            {/* Review Text */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Review (Optional)</label>
+              <textarea
+                value={reviewForm.review}
+                onChange={(e) => setReviewForm({ ...reviewForm, review: e.target.value })}
+                placeholder="Share your experience with this venue..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows={4}
+                maxLength={1000}
+              />
+              <p className="text-xs text-gray-500 mt-1">{reviewForm.review.length}/1000 characters</p>
+            </div>
+
+            {/* Modal Buttons */}
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="flex-1 px-4 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitReview}
+                disabled={loading || reviewForm.rating === 0}
+                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? 'Submitting...' : 'Submit Review'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

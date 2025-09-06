@@ -54,7 +54,7 @@ const errorHandler = (err, req, res, next) => {
     };
   }
 
-  // Cast error (invalid ID format)
+  // Cast error invalid ID 
   if (err.name === 'CastError') {
     error = {
       message: 'Invalid ID format',

@@ -14,8 +14,21 @@ const Footer = () => {
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-primary-600 to-secondary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">BC</span>
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="60" cy="60" r="58" fill="#FFFFFF" opacity="0.9"/>
+                  <rect x="25" y="35" width="70" height="50" rx="8" fill="#2563EB" opacity="0.8"/>
+                  <line x1="60" y1="35" x2="60" y2="85" stroke="#FFFFFF" strokeWidth="2"/>
+                  <circle cx="60" cy="60" r="12" fill="none" stroke="#FFFFFF" strokeWidth="2"/>
+                  <line x1="25" y1="50" x2="25" y2="70" stroke="#FFFFFF" strokeWidth="3"/>
+                  <line x1="95" y1="50" x2="95" y2="70" stroke="#FFFFFF" strokeWidth="3"/>
+                  <circle cx="40" cy="25" r="6" fill="#F59E0B"/>
+                  <path d="M34 25 Q40 20 46 25" stroke="#F59E0B" strokeWidth="2" fill="none"/>
+                  <circle cx="80" cy="25" r="6" fill="#10B981"/>
+                  <path d="M74 25 Q80 20 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+                  <path d="M74 25 Q80 30 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+                  <text x="60" y="105" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="#2563EB">BC</text>
+                </svg>
               </div>
               <span className="text-xl font-bold">BookMyCourt.lk</span>
             </div>
@@ -71,6 +84,9 @@ const Footer = () => {
                   Profile
                 </Link>
               </li>
+              <li>
+              <Link to="/about" className="text-gray-300 hover:text-white transition-colors">About Us</Link>
+              </li>
             </ul>
           </div>
 
@@ -86,7 +102,7 @@ const Footer = () => {
               </li>
               <li className="flex items-center space-x-2">
                 <PhoneIcon className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-300">+94 11 234 5678</span>
+                <span className="text-gray-300">+94 77 421 8840</span>
               </li>
               <li className="flex items-center space-x-2">
                 <EnvelopeIcon className="w-4 h-4 text-gray-400" />

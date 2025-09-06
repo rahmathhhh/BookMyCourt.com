@@ -25,6 +25,15 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
+    // Checking if user is verified though otp
+    if (!user.isVerified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please verify your phone number with the OTP sent to your phone',
+        requiresVerification: true
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {
@@ -97,7 +106,6 @@ const optionalAuth = async (req, res, next) => {
     
     next();
   } catch (error) {
-    // Continue without authentication
     next();
   }
 };

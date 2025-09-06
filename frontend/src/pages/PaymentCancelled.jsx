@@ -10,7 +10,7 @@ const PaymentCancelled = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Extract payment details from URL parameters
+    // Extract payment details 
     const paymentId = searchParams.get('payment_id');
     const orderId = searchParams.get('order_id');
     const statusCode = searchParams.get('status_code');

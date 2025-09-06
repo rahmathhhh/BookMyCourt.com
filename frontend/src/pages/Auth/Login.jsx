@@ -11,8 +11,9 @@ const Login = () => {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    setFormError(null);
-    clearError();
+    if (formError) {
+      setFormError(null);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -27,7 +28,7 @@ const Login = () => {
       try { redirectTo = localStorage.getItem('redirectTo') || '/'; } catch {}
       try { localStorage.removeItem('redirectTo'); } catch {}
 
-      // Role-based default if no redirect stored
+      // Role-based 
       if (!redirectTo || redirectTo === '/') {
         const role = res.user?.role || user?.role;
         if (role === 'admin' || role === 'staff') redirectTo = '/dashboard';
@@ -43,7 +44,20 @@ const Login = () => {
         {/* Header */}
         <div className="text-center">
           <div className="mx-auto h-16 w-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mb-6">
-            <span className="text-3xl text-white">🏟️</span>
+            <svg className="w-10 h-10" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="60" cy="60" r="58" fill="#FFFFFF" opacity="0.9"/>
+              <rect x="25" y="35" width="70" height="50" rx="8" fill="#2563EB" opacity="0.8"/>
+              <line x1="60" y1="35" x2="60" y2="85" stroke="#FFFFFF" strokeWidth="2"/>
+              <circle cx="60" cy="60" r="12" fill="none" stroke="#FFFFFF" strokeWidth="2"/>
+              <line x1="25" y1="50" x2="25" y2="70" stroke="#FFFFFF" strokeWidth="3"/>
+              <line x1="95" y1="50" x2="95" y2="70" stroke="#FFFFFF" strokeWidth="3"/>
+              <circle cx="40" cy="25" r="6" fill="#F59E0B"/>
+              <path d="M34 25 Q40 20 46 25" stroke="#F59E0B" strokeWidth="2" fill="none"/>
+              <circle cx="80" cy="25" r="6" fill="#10B981"/>
+              <path d="M74 25 Q80 20 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+              <path d="M74 25 Q80 30 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+              <text x="60" y="105" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="#2563EB">BC</text>
+            </svg>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back!</h2>
           <p className="text-gray-600">
@@ -135,8 +149,22 @@ const Login = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <div className="ml-3">
+                  <div className="ml-3 flex-1">
                     <p className="text-sm text-red-800">{formError || error}</p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormError(null);
+                        clearError();
+                      }}
+                      className="text-red-400 hover:text-red-600"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>

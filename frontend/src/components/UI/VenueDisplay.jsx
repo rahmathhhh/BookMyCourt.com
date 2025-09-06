@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 const VenueDisplay = ({ venue }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
-  // Placeholder images for now - you can replace with actual venue photos
+  // Placeholder images for testing
   const venueImages = [
     'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=600&fit=crop',
     'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop',

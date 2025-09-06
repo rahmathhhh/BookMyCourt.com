@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Venue = require('../models/Venue');
 const Booking = require('../models/Booking');
+const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 
-// List venues with filters (city, sportType, proximity)
+// List venues with filters (city, sportType)
 
 router.get('/', async (req, res) => {
   try {
@@ -17,7 +18,7 @@ router.get('/', async (req, res) => {
 
     let venues = await Venue.findAll({ where });
 
-    // Optional proximity filtering
+    // Optional filtering
     if (lat && lng && radius) {
       const R = 6371; // Earth radius in km
       const userLat = parseFloat(lat);
@@ -120,16 +121,66 @@ router.post(
   }
 );
 
-// Get venue details (must be **after** /:id/reviews to avoid conflict)
+// Get venue reviews
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const venueId = req.params.id;
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const reviews = await Booking.findAll({
+      where: { 
+        venueId: venueId, 
+        rating: { [Op.ne]: null },
+        review: { [Op.ne]: null }
+      },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'firstName', 'lastName']
+      }],
+      order: [['reviewedAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    const totalReviews = await Booking.count({
+      where: { 
+        venueId: venueId, 
+        rating: { [Op.ne]: null }
+      }
+    });
+
+    res.json({ 
+      success: true, 
+      data: { 
+        reviews,
+        totalReviews,
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalReviews / limit)
+      } 
+    });
+  } catch (error) {
+    console.error('Venue reviews error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch venue reviews' });
+  }
+});
+
+// Get venue details (must be after /:id/reviews to avoid conflict)
 router.get('/:id', async (req, res) => {
   try {
     const venue = await Venue.findByPk(req.params.id);
     if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
 
     const reviews = await Booking.findAll({
-      where: { venueId: venue.id, review: { [Op.ne]: null } },
+      where: { venueId: venue.id, rating: { [Op.ne]: null } },
       order: [['reviewedAt', 'DESC']],
-      limit: 5
+      limit: 5,
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'firstName', 'lastName']
+      }]
     });
 
     res.json({ success: true, data: { venue, reviews } });
@@ -139,4 +190,4 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router; 

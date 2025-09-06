@@ -8,6 +8,7 @@ const OTPModal = ({
   message = "Please enter the OTP sent to your phone",
   loading = false,
   error = null,
+  success = false,
   resendOTP = null,
   countdown = 0
 }) => {
@@ -25,18 +26,18 @@ const OTPModal = ({
   }, [isOpen, inputRefs]);
 
   const handleInputChange = (index, value) => {
-    if (value.length > 1) return; // Prevent multiple characters
+    if (value.length > 1) return; // Preventing multiple characters
     
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
 
-    // Move to next input if value entered
+    // Moving to next input if value entered
     if (value && index < 5) {
       inputRefs[index + 1]?.focus();
     }
 
-    // Auto-submit if all digits entered
+    // Auto submit if all digits entered
     if (newOtp.every(digit => digit !== '') && index === 5) {
       handleVerify();
     }
@@ -74,6 +75,15 @@ const OTPModal = ({
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              OTP verified and automatically logged in!
             </div>
           )}
 

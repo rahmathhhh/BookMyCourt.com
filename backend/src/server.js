@@ -9,7 +9,7 @@ require('dotenv').config();
 
 const db = require('./config/database');
 
-// Ensure all model associations are initialized
+// Ensuring all model associations are initialized
 require('./models');
 
 // Import models
@@ -19,7 +19,7 @@ const Booking = require('./models/Booking');
 const authRoutes = require('./routes/auth');
 const venueRoutes = require('./routes/venues');
 const bookingRoutes = require('./routes/bookings');
-const paymentRoutes = require('./routes/payments');
+const { router: paymentRoutes } = require('./routes/payments');
 const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -53,7 +53,6 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded files
 // Serve uploaded files with CORS headers
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -76,53 +75,59 @@ app.get('/health', (req, res) => {
 try {
   app.use('/api/auth', authRoutes);
 } catch (err) {
-  console.error('❌ Error in authRoutes:', err);
+  // console.error(' Error in authRoutes:', err);
 }
 
 try {
   app.use('/api/bookings', bookingRoutes);
 } catch (err) {
-  console.error('❌ Error in bookingRoutes:', err);
+  // console.error(' Error in bookingRoutes:', err);
 }
 
 try {
   app.use('/api/venues', venueRoutes);
 } catch (err) {
-  console.error('❌ Error in venueRoutes:', err);
+  // console.error(' Error in venueRoutes:', err);
 }
 
 try {
-  app.use('/api/payments', authenticateToken, paymentRoutes);
+  // IPN endpoint should NOT require authentication (PayHere can't provide JWT tokens)
+  // We need to import the IPN handler directly
+  const { handleIPN, router: paymentRouter } = require('./routes/payments');
+  app.post('/api/payments/notify', handleIPN);
+  
+  // All other payment routes require authentication
+  app.use('/api/payments', authenticateToken, paymentRouter);
 } catch (err) {
-  console.error('❌ Error in paymentRoutes:', err);
+  // console.error(' Error in paymentRoutes:', err);
 }
 
 try {
   app.use('/api/users', authenticateToken, userRoutes);
 } catch (err) {
-  console.error('❌ Error in userRoutes:', err);
+  // console.error(' Error in userRoutes:', err);
 }
 
 try {
   app.use('/api/admin', authenticateToken, adminRoutes);
 } catch (err) {
-  console.error('❌ Error in adminRoutes:', err);
+  // console.error(' Error in adminRoutes:', err);
 }
 
-// Socket.io for real-time updates
+// Socket.io for real time updates
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  // console.log('User connected:', socket.id);
 
   // Join venue room for real-time updates
   socket.on('join-venue', (venueId) => {
     socket.join(`venue-${venueId}`);
-    console.log(`User ${socket.id} joined venue ${venueId}`);
+    // console.log(`User ${socket.id} joined venue ${venueId}`);
   });
 
   // Leave venue room
   socket.on('leave-venue', (venueId) => {
     socket.leave(`venue-${venueId}`);
-    console.log(`User ${socket.id} left venue ${venueId}`);
+    // console.log(`User ${socket.id} left venue ${venueId}`);
   });
 
   // Handle booking updates
@@ -131,7 +136,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    // console.log('User disconnected:', socket.id);
   });
 });
 
@@ -154,7 +159,7 @@ const startServer = async () => {
   try {
     // Test database connection
     await db.authenticate();
-    console.log('✅ Database connection established successfully.');
+    // console.log(' Database connection established successfully.');
     
     // Sync database (in development) - temporarily disabled due to index limit
     if (process.env.NODE_ENV === 'development') {
@@ -162,15 +167,15 @@ const startServer = async () => {
       try {
         const AvailableSlot = require('./models/AvailableSlot');
         await AvailableSlot.sync();
-        console.log('✅ AvailableSlot table ensured.');
+        // console.log(' AvailableSlot table ensured.');
       } catch (e) {
         console.warn('⚠️  Skipped AvailableSlot.sync():', e?.message || e);
       }
-      console.log('✅ Database connection established (sync minimized).');
+      // console.log(' Database connection established (sync minimized).');
     }
 
     // Associations are initialized via require('./models') above
-    // Ensure Booking associations (belongsTo User/Venue) are registered
+    // Ensuring Booking associations (belongsTo User/Venue) are registered
     if (Booking && typeof Booking.associate === 'function') {
       Booking.associate({ User, Venue });
     }
@@ -180,36 +185,36 @@ const startServer = async () => {
       try {
         const result = await CleanupService.runFullCleanup();
         if (result.expiredCount > 0 || result.otpCount > 0 || result.reservationCount > 0) {
-          console.log(`🧹 Cleanup job: ${result.expiredCount} expired bookings, ${result.otpCount} expired OTPs, ${result.reservationCount} expired reservations cleaned up`);
+          // console.log(` Cleanup job: ${result.expiredCount} expired bookings, ${result.otpCount} expired OTPs, ${result.reservationCount} expired reservations cleaned up`);
         }
       } catch (error) {
-        console.error('❌ Cleanup job failed:', error);
+        // console.error(' Cleanup job failed:', error);
       }
     }, 15 * 60 * 1000); // 15 minutes
 
     server.listen(PORT, () => {
-      console.log(`🚀 BookMyCourt.lk API server running on port ${PORT}`);
-      console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      // console.log(` BookMyCourt.lk API server running on port ${PORT}`);
+      // console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
+      // console.log(` Health check: http://localhost:${PORT}/health`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    // console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
+  // console.log('SIGTERM received, shutting down gracefully');
   server.close(() => {
-    console.log('Process terminated');
+    // console.log('Process terminated');
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
+  // console.log('SIGINT received, shutting down gracefully');
   server.close(() => {
-    console.log('Process terminated');
+    // console.log('Process terminated');
   });
 });
 

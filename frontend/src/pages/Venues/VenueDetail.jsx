@@ -11,6 +11,7 @@ const VenueDetail = () => {
   
 
   const [venue, setVenue] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     bookingDate: '',
@@ -32,9 +33,7 @@ const VenueDetail = () => {
 
   // Helper to generate 1-hour slots based on opening hours
   const generateSlots = (openingHours, date) => {
-    console.log('DEBUG openingHours:', openingHours, 'date:', date);
     const day = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-    console.log('DEBUG day key:', day, 'hours for day:', openingHours ? openingHours[day] : undefined);
     let hours = openingHours[day];
     // Fallback to default if missing or invalid
     if (!hours || (typeof hours === 'object' && (!hours.open || !hours.close))) {
@@ -77,9 +76,12 @@ const VenueDetail = () => {
            const bookings = res.data.data.bookings || [];
            const availability = res.data.data.availability || [];
            
+
+           
            // Create sets for different slot states
            const bookedPairs = new Set();
            const reservedPairs = new Set();
+           const reservationData = new Map(); // Store otpExpiresAt for each reservation
            
            bookings.forEach(booking => {
              const key = `${normalizeTime(booking.startTime)}-${normalizeTime(booking.endTime)}`;
@@ -87,22 +89,41 @@ const VenueDetail = () => {
                bookedPairs.add(key);
              } else if (booking.status === 'pending' && booking.otpExpiresAt && new Date(booking.otpExpiresAt) > new Date()) {
                reservedPairs.add(key);
+               reservationData.set(key, booking.otpExpiresAt);
              }
            });
            
            // Treat availability as a blacklist: only slots present with isBlocked=true are unavailable
            const blockedSet = new Set(availability.filter(a => a.isBlocked).map(a => `${normalizeTime(a.startTime)}-${normalizeTime(a.endTime)}`));
 
+
+
            const allSlots = generateSlots(venue.openingHours, form.bookingDate);
+
            const enriched = allSlots.map(slot => {
              // Use startTime/endTime to match backend format
              const key = `${slot.startTime}-${slot.endTime}`;
-             const isBooked = bookedPairs.has(key);
-             const isReserved = reservedPairs.has(key);
+             
+             // Check if this slot is covered by any multi-hour booking
+             const isBooked = bookedPairs.has(key) || Array.from(bookedPairs).some(bookedKey => {
+               const [bookedStart, bookedEnd] = bookedKey.split('-');
+               return slot.startTime >= bookedStart && slot.endTime <= bookedEnd;
+             });
+             
+             const isReserved = reservedPairs.has(key) || Array.from(reservedPairs).some(reservedKey => {
+               const [reservedStart, reservedEnd] = reservedKey.split('-');
+               return slot.startTime >= reservedStart && slot.endTime <= reservedEnd;
+             });
+             
              const isBlocked = blockedSet.has(key);
-             return { ...slot, booked: isBooked, reserved: isReserved, blocked: isBlocked };
+             
+             // Get otpExpiresAt for this slot if it's reserved
+             const otpExpiresAt = isReserved ? reservationData.get(key) : null;
+             
+             return { ...slot, booked: isBooked, reserved: isReserved, blocked: isBlocked, otpExpiresAt };
                        });
             
+
             setSlots(enriched);
          })
          .catch(() => setSlots([]))
@@ -118,6 +139,25 @@ const VenueDetail = () => {
      // Cleanup interval on unmount or date change
      return () => clearInterval(interval);
    }, [venue, form.bookingDate, slotRefreshTrigger]);
+
+   // Check for expired reservations every minute and refresh slots
+   useEffect(() => {
+     if (!venue?.id || !form.bookingDate) return;
+     
+     const checkExpiredInterval = setInterval(() => {
+       // Check if any current slots are reserved and might have expired
+       const now = new Date();
+       const hasExpiredReservations = slots.some(slot => 
+         slot.reserved && slot.otpExpiresAt && new Date(slot.otpExpiresAt) <= now
+       );
+       
+       if (hasExpiredReservations) {
+         setSlotRefreshTrigger(prev => prev + 1);
+       }
+     }, 60000); // Check every minute
+     
+     return () => clearInterval(checkExpiredInterval);
+   }, [venue?.id, form.bookingDate, slots]);
 
    // Force refresh slots when slotRefreshTrigger changes (for any date)
    useEffect(() => {
@@ -137,6 +177,7 @@ const VenueDetail = () => {
            // Create sets for different slot states
            const bookedPairs = new Set();
            const reservedPairs = new Set();
+           const reservationData = new Map(); // Store otpExpiresAt for each reservation
            
            bookings.forEach(booking => {
              const key = `${normalizeTime(booking.startTime)}-${normalizeTime(booking.endTime)}`;
@@ -144,25 +185,43 @@ const VenueDetail = () => {
                bookedPairs.add(key);
              } else if (booking.status === 'pending' && booking.otpExpiresAt && new Date(booking.otpExpiresAt) > new Date()) {
                reservedPairs.add(key);
+               reservationData.set(key, booking.otpExpiresAt);
              }
            });
            
            // Treat availability as a blacklist: only slots present with isBlocked=true are unavailable
            const blockedSet = new Set(availability.filter(a => a.isBlocked).map(a => `${normalizeTime(a.startTime)}-${normalizeTime(a.endTime)}`));
 
+
+
            const allSlots = generateSlots(venue.openingHours, form.bookingDate);
+
            const enriched = allSlots.map(slot => {
              // Use startTime/endTime to match backend format
              const key = `${slot.startTime}-${slot.endTime}`;
-             const isBooked = bookedPairs.has(key);
-             const isReserved = reservedPairs.has(key);
+             
+             // Check if this slot is covered by any multi-hour booking
+             const isBooked = bookedPairs.has(key) || Array.from(bookedPairs).some(bookedKey => {
+               const [bookedStart, bookedEnd] = bookedKey.split('-');
+               return slot.startTime >= bookedStart && slot.endTime <= bookedEnd;
+             });
+             
+             const isReserved = reservedPairs.has(key) || Array.from(reservedPairs).some(reservedKey => {
+               const [reservedStart, reservedEnd] = reservedKey.split('-');
+               return slot.startTime >= reservedStart && slot.endTime <= reservedEnd;
+             });
+             
              const isBlocked = blockedSet.has(key);
-             return { ...slot, booked: isBooked, reserved: isReserved, blocked: isBlocked };
+             
+             // Get otpExpiresAt for this slot if it's reserved
+             const otpExpiresAt = isReserved ? reservationData.get(key) : null;
+             
+             return { ...slot, booked: isBooked, reserved: isReserved, blocked: isBlocked, otpExpiresAt };
                        });
             
             setSlots(enriched);
          } catch (error) {
-           console.error('Error refreshing slots:', error);
+           // Handle error silently
          } finally {
            setSlotLoading(false);
          }
@@ -181,8 +240,10 @@ const VenueDetail = () => {
       try {
         const res = await api.get(`/venues/${id}`);
         setVenue(res.data.data.venue);
+        setReviews(res.data.data.reviews || []);
       } catch (err) {
         setVenue(null);
+        setReviews([]);
       } finally {
         setLoading(false);
       }
@@ -228,53 +289,65 @@ const VenueDetail = () => {
   // Helper function to start payment with SDK
   const startPaymentWithSDK = (payHereData) => {
     try {
+      let paymentHandled = false;
+      
       // Set up PayHere event handlers
       window.payhere.onCompleted = function onCompleted(orderId) {
-        console.log("✅ Payment completed. OrderID:", orderId);
-        setSuccessMsg('Payment completed successfully!');
+        if (paymentHandled) return; // Prevent duplicate handling
+        paymentHandled = true;
+        
+        // Only show success if we have a valid order ID
+        if (orderId) {
+          setSuccessMsg('Payment completed successfully!');
+        } else {
+          setFormError('Payment failed. Please try again.');
+        }
       };
 
       window.payhere.onDismissed = function onDismissed() {
-        console.log("❌ Payment dismissed by user");
+        if (paymentHandled) return; // Prevent duplicate handling
+        paymentHandled = true;
         setFormError('Payment was cancelled. Please try again.');
       };
 
       window.payhere.onError = function onError(error) {
-        console.log("❌ Payment error:", error);
-        setFormError('Payment error: ' + error);
+        if (paymentHandled) return; // Prevent duplicate handling
+        paymentHandled = true;
+        setFormError('Payment failed: ' + (error || 'Unknown error. Please try again.'));
       };
 
       // Start the payment
       window.payhere.startPayment(payHereData);
+      
+      // Set a timeout to handle cases where PayHere doesn't call any events
+      setTimeout(() => {
+        if (!paymentHandled) {
+          paymentHandled = true;
+          setFormError('Payment timeout. Please check your bookings or try again.');
+        }
+      }, 30000); // 30 seconds timeout
+      
     } catch (sdkError) {
-      console.error('❌ PayHere SDK error:', sdkError);
-      setFormError('Payment SDK error. Please try again.');
+      setFormError('Payment system error. Please try again.');
     }
   };
 
   const handlePayment = async () => {
-    console.log('🔍 Initiating payment for booking:', currentBookingId);
     setPaymentLoading(true);
     
     try {
       const res = await api.post('/payments/initiate', { bookingId: currentBookingId });
-      console.log('✅ Payment initiation response:', res.data);
       
       if (res.data.success) {
-        // Use PayHere SDK instead of manual form submission
         const payHereData = res.data.data;
-        console.log('🔍 PayHere data received:', payHereData);
         
         // Show success message
         setSuccessMsg('Redirecting to PayHere for payment...');
         
         // Use PayHere SDK to start payment
         if (window.payhere && window.payhere.startPayment) {
-          console.log('✅ PayHere SDK found, starting payment...');
-          console.log('🔍 Payment data:', payHereData);
           startPaymentWithSDK(payHereData);
         } else {
-          console.log('⏳ PayHere SDK not loaded yet, trying to load it now...');
           
           // Try to load the SDK if it's not available
           if (!document.querySelector('script[src*="payhere.js"]')) {
@@ -284,7 +357,7 @@ const VenueDetail = () => {
             script.async = true;
             
             script.onload = () => {
-              console.log('✅ PayHere SDK script loaded, waiting for object...');
+              // console.log('✅ PayHere SDK script loaded, waiting for object...');
               
               // Wait for SDK to be ready
               let attempts = 0;
@@ -294,25 +367,25 @@ const VenueDetail = () => {
                 attempts++;
                 if (window.payhere && window.payhere.startPayment) {
                   clearInterval(checkSDK);
-                  console.log('✅ PayHere SDK ready, starting payment...');
+                  // console.log('✅ PayHere SDK ready, starting payment...');
                   startPaymentWithSDK(payHereData);
                 } else if (attempts >= maxAttempts) {
                   clearInterval(checkSDK);
-                  console.error('❌ PayHere SDK failed to become ready after 10 seconds');
+                  // console.error('❌ PayHere SDK failed to become ready after 10 seconds');
                   setFormError('Payment system not ready. Please refresh and try again.');
                 }
               }, 100);
             };
             
             script.onerror = () => {
-              console.error('❌ Failed to load PayHere SDK script');
+              // console.error('❌ Failed to load PayHere SDK script');
               setFormError('Failed to load payment system. Please refresh and try again.');
             };
             
             document.head.appendChild(script);
           } else {
             // Script exists but SDK not ready, wait for it
-            console.log('⏳ Script exists, waiting for SDK to be ready...');
+            // console.log('⏳ Script exists, waiting for SDK to be ready...');
             let attempts = 0;
             const maxAttempts = 100; // 10 seconds
             
@@ -320,11 +393,11 @@ const VenueDetail = () => {
               attempts++;
               if (window.payhere && window.payhere.startPayment) {
                 clearInterval(waitForSDK);
-                console.log('✅ PayHere SDK ready, starting payment...');
+                // console.log('✅ PayHere SDK ready, starting payment...');
                 startPaymentWithSDK(payHereData);
               } else if (attempts >= maxAttempts) {
                 clearInterval(waitForSDK);
-                console.error('❌ PayHere SDK failed to become ready after 10 seconds');
+                // console.error('❌ PayHere SDK failed to become ready after 10 seconds');
                 setFormError('Payment system not ready. Please refresh and try again.');
             }
           }, 100);
@@ -332,7 +405,7 @@ const VenueDetail = () => {
       }
       }
     } catch (err) {
-      console.error('❌ Payment initiation error:', err);
+      // console.error('❌ Payment initiation error:', err);
       setFormError(err.response?.data?.message || 'Failed to initiate payment');
     } finally {
       setPaymentLoading(false);
@@ -346,18 +419,18 @@ const VenueDetail = () => {
   // Handle PayHere notifications (IPN callbacks)
   const handlePayHereNotification = async (notificationData) => {
     try {
-      console.log('📩 PayHere notification received:', notificationData);
+      // console.log('📩 PayHere notification received:', notificationData);
       
       // Forward notification to backend
       const response = await api.post('/payments/notify', notificationData);
       
       if (response.data.success) {
-        console.log('✅ Notification forwarded to backend successfully');
+        // console.log('✅ Notification forwarded to backend successfully');
       } else {
-        console.error('❌ Failed to forward notification:', response.data.message);
+        // console.error('❌ Failed to forward notification:', response.data.message);
       }
     } catch (error) {
-      console.error('❌ Error forwarding notification:', error);
+      // console.error('❌ Error forwarding notification:', error);
     }
   };
 
@@ -368,7 +441,7 @@ const VenueDetail = () => {
     const statusCode = urlParams.get('status_code');
     
     if (paymentId && statusCode) {
-      console.log('🔍 PayHere callback detected:', { paymentId, statusCode });
+      // console.log('🔍 PayHere callback detected:', { paymentId, statusCode });
       // Handle the callback
       const notificationData = {
         payment_id: paymentId,
@@ -425,12 +498,7 @@ const VenueDetail = () => {
       // Calculate total amount
       const totalAmount = selectedSlots.length * (venue?.basePrice || 0);
       
-      // Debug amount calculation
-      console.log('🔍 Amount calculation:', {
-        selectedSlots: selectedSlots.length,
-        venueBasePrice: venue?.basePrice,
-        totalAmount: totalAmount
-      });
+      // Amount calculation completed
       
       // Create booking directly (no OTP needed)
       const res = await api.post('/bookings', {
@@ -451,14 +519,16 @@ const VenueDetail = () => {
          setCurrentBooking(res.data.data.booking);
          setShowPayment(true);
          
-                   // Force refresh slots to show the new reservation status
-          // Always trigger slot refresh regardless of current form date
-          setSlotRefreshTrigger(prev => prev + 1);
-         
          // Reset form but keep the date
          setForm({ ...form, players: 1, specialRequests: '' });
          setSelectedSlots([]);
          setSlotMsg('');
+         
+         // Force refresh slots to show the new reservation status with a small delay
+         setTimeout(() => {
+           // console.log('🔄 Refreshing slots after booking creation...');
+           setSlotRefreshTrigger(prev => prev + 1);
+         }, 500); // 500ms delay to ensure backend has processed the booking
        }
     } catch (err) {
       if (err.response?.status === 409) {
@@ -484,13 +554,15 @@ const VenueDetail = () => {
                 <>
                   <div className="flex items-center mb-4">
                     <div className="flex items-center">
-                                             {[...Array(5)].map((_, i) => (
-                         <svg key={i} className={`w-5 h-5 ${i < 4 ? 'text-yellow-300' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 24 24">
-                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                         </svg>
-                       ))}
+                      {[...Array(5)].map((_, i) => (
+                        <svg key={i} className={`w-5 h-5 ${i < 4 ? 'text-yellow-300' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                      ))}
                     </div>
-                    <span className="ml-2 text-blue-100">4.0 (24 reviews)</span>
+                    <span className="ml-2 text-blue-100">
+                      4.5 ({reviews.length} reviews)
+                    </span>
                   </div>
                   <div className="space-y-2 text-blue-100">
                     <div className="flex items-center">
@@ -505,6 +577,16 @@ const VenueDetail = () => {
                       </svg>
                       <span>Open: {venue.openingHours?.monday || '08:00-22:00'}</span>
                     </div>
+                    {venue.phone && (
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                        </svg>
+                        <a href={`tel:${venue.phone}`} className="hover:text-white transition-colors">
+                          {venue.phone}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -520,7 +602,22 @@ const VenueDetail = () => {
                 />
               ) : (
                 <div className="text-center">
-                  <div className="text-6xl mb-4">🏟️</div>
+                  <div className="w-24 h-24 mx-auto mb-4 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                    <svg className="w-16 h-16" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="60" cy="60" r="58" fill="#FFFFFF" opacity="0.9"/>
+                      <rect x="25" y="35" width="70" height="50" rx="8" fill="#2563EB" opacity="0.8"/>
+                      <line x1="60" y1="35" x2="60" y2="85" stroke="#FFFFFF" strokeWidth="2"/>
+                      <circle cx="60" cy="60" r="12" fill="none" stroke="#FFFFFF" strokeWidth="2"/>
+                      <line x1="25" y1="50" x2="25" y2="70" stroke="#FFFFFF" strokeWidth="3"/>
+                      <line x1="95" y1="50" x2="95" y2="70" stroke="#FFFFFF" strokeWidth="3"/>
+                      <circle cx="40" cy="25" r="6" fill="#F59E0B"/>
+                      <path d="M34 25 Q40 20 46 25" stroke="#F59E0B" strokeWidth="2" fill="none"/>
+                      <circle cx="80" cy="25" r="6" fill="#10B981"/>
+                      <path d="M74 25 Q80 20 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+                      <path d="M74 25 Q80 30 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+                      <text x="60" y="105" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="#2563EB">BC</text>
+                    </svg>
+                  </div>
                   <h3 className="text-2xl font-bold mb-2">{venue ? venue.name : 'Venue'}</h3>
                   <p className="text-blue-200">Sports Court</p>
                 </div>
@@ -862,15 +959,71 @@ const VenueDetail = () => {
                   Opening Hours
                 </h3>
                 <div className="space-y-2">
-                  {Object.entries(venue.openingHours).map(([day, hours]) => (
-                    <div key={day} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                      <span className="capitalize font-medium text-gray-700">{day}</span>
-                      <span className="text-gray-600">{hours}</span>
-                    </div>
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                    venue.openingHours[day] && (
+                      <div key={day} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                        <span className="capitalize font-medium text-gray-700">{day}</span>
+                        <span className="text-gray-600">{venue.openingHours[day]}</span>
+                      </div>
+                    )
                   ))}
                 </div>
               </div>
             )}
+
+            {/* Reviews Card */}
+            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                <svg className="w-6 h-6 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+                Reviews ({reviews ? reviews.length : 0})
+              </h3>
+              
+              {!reviews || reviews.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <p className="text-lg font-medium">No reviews yet</p>
+                  <p className="text-sm">Be the first to review this venue!</p>
+                </div>
+              ) : (
+                            <div className="space-y-4">
+              {reviews && reviews.map((review, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-blue-600 font-semibold text-sm">
+                              {review.user?.firstName?.charAt(0) || 'U'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {review.user?.firstName} {review.user?.lastName}
+                            </p>
+                            <div className="flex items-center">
+                              {[...Array(5)].map((_, i) => (
+                                <svg key={i} className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                </svg>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {new Date(review.reviewedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {review.review && (
+                        <p className="text-gray-700 mt-2">{review.review}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
         </div>
         </div>
       </div>

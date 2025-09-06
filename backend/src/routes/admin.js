@@ -13,7 +13,7 @@ const { requireAdmin, requireStaff } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 
-// Configure multer for image uploads
+// Configuring multer for image uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = '../frontend/public/images/venues';
@@ -148,7 +148,7 @@ router.put('/users/:id/password', requireAdmin, [
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    // Update password (will be hashed by the model hook)
+    // Update password can be hashed by the model hook
     user.password = req.body.newPassword;
     await user.save();
     
@@ -320,7 +320,7 @@ router.put('/venues/:id', requireAdmin, upload.array('newImages', 10), [
     const venue = await Venue.findByPk(req.params.id);
     if (!venue) return res.status(404).json({ success: false, message: 'Venue not found' });
     
-    // Parse opening hours if it's a string
+    // Parse opening hours 
     let openingHours = req.body.openingHours;
     if (typeof openingHours === 'string') {
       try {
@@ -419,7 +419,7 @@ router.post('/create-staff', requireAdmin, [
       lastName,
       email,
       phone,
-      password, // plain password, model will hash
+      password, 
       role: 'staff',
       isVerified: true,
       isActive: true
@@ -448,7 +448,7 @@ router.get('/staff', requireAdmin, async (req, res) => {
       include: [{
         model: Venue,
         as: 'assignedVenues',
-        through: { attributes: [] } // Don't include join table attributes
+        through: { attributes: [] } 
       }]
     });
     res.json({ success: true, data: { staff } });
@@ -476,10 +476,10 @@ router.post('/staff/:id/assign-venues', requireAdmin, [
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
-    // Remove existing assignments
+    // Remove existing assign venues
     await StaffVenue.destroy({ where: { staffId } });
 
-    // Create new assignments
+    // Create new assigns
     if (venueIds.length > 0) {
       const venueAssignments = venueIds.map(venueId => ({
         staffId,
@@ -571,17 +571,22 @@ router.get('/staff/my-venues', requireStaff, async (req, res) => {
   try {
     const userId = req.user.id;
     
-    const staffVenues = await StaffVenue.findAll({
-      where: { staffId: userId },
+    // Get staff user with assigned venues via belongsToMany association
+    const staff = await User.findByPk(userId, {
       include: [{
         model: Venue,
+        as: 'assignedVenues',
         attributes: ['id', 'name', 'sportType', 'address', 'city', 'basePrice', 'openingHours', 'isActive']
       }]
     });
 
-    const venues = staffVenues.map(sv => sv.Venue);
-    res.json({ success: true, data: { venues } });
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    res.json({ success: true, data: { venues: staff.assignedVenues || [] } });
   } catch (error) {
+    console.error('Failed to fetch staff venues:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch assigned venues' });
   }
 });
@@ -713,7 +718,7 @@ router.put('/staff/venues/:id', requireStaff, [
 router.get('/staff/availability', requireStaff, async (req, res) => {
   try {
     const { venueId, date } = req.query;
-    console.log('🔍 Staff availability request:', { venueId, date, userId: req.user.id });
+    console.log(' Staff availability request:', { venueId, date, userId: req.user.id });
     
     if (!venueId || !date) {
       return res.status(400).json({ success: false, message: 'venueId and date are required' });
@@ -721,18 +726,18 @@ router.get('/staff/availability', requireStaff, async (req, res) => {
 
     // Ensure staff is assigned to the venue
     const assigned = await StaffVenue.findOne({ where: { staffId: req.user.id, venueId } });
-    console.log('🔍 Staff venue assignment:', assigned);
+    console.log(' Staff venue assignment:', assigned);
     
     if (!assigned) {
       return res.status(403).json({ success: false, message: 'Not authorized to manage this venue' });
     }
 
-    // Get staff-marked unavailable slots
+    // Get staff marked unavailable slots
     const blockedSlots = await AvailableSlot.findAll({
       where: { venueId, date },
       order: [['startTime', 'ASC']]
     });
-    console.log('🔍 Blocked slots:', blockedSlots.length);
+    console.log(' Blocked slots:', blockedSlots.length);
 
     // Get actual booked slots for the same date
     const bookedSlots = await Booking.findAll({
@@ -743,7 +748,7 @@ router.get('/staff/availability', requireStaff, async (req, res) => {
       },
       order: [['startTime', 'ASC']]
     });
-    console.log('🔍 Booked slots:', bookedSlots.length);
+    console.log(' Booked slots:', bookedSlots.length);
 
     res.json({ 
       success: true, 
@@ -753,12 +758,12 @@ router.get('/staff/availability', requireStaff, async (req, res) => {
       } 
     });
   } catch (error) {
-    console.error('❌ Staff availability error:', error);
+    console.error(' Staff availability error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch availability', error: error.message });
   }
 });
 
-// Staff: Set availability (bulk upsert) for a venue and date
+// Staff: Set availability (bulk upsert) for a venue and date 
 router.post('/staff/availability/bulk', requireStaff, [
   body('venueId').notEmpty().withMessage('venueId is required'),
   body('date').isISO8601().withMessage('Valid date is required'),

@@ -15,12 +15,13 @@ import Dashboard from './pages/Dashboard';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancelled from './pages/PaymentCancelled';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import About from './pages/About';
 
-// Create a client
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000, 
       retry: 1,
     },
   },
@@ -43,6 +44,7 @@ function App() {
                 <Route path="venues/:id" element={<VenueDetail />} />
                 <Route path="payment-success" element={<PaymentSuccess />} />
                 <Route path="payment-cancelled" element={<PaymentCancelled />} />
+                <Route path="/about" element={<About />} />
                 
                 {/* Protected routes */}
                 <Route path="bookings" element={

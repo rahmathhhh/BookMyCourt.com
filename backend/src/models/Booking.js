@@ -28,14 +28,7 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.TIME,
     allowNull: false
   },
-  duration: {
-    type: DataTypes.INTEGER, // in minutes
-    allowNull: false,
-    validate: {
-      min: 30,
-      max: 480 // 8 hours max
-    }
-  },
+
   status: {
     type: DataTypes.ENUM('pending', 'confirmed', 'cancelled', 'completed', 'no-show'),
     defaultValue: 'pending'
@@ -44,6 +37,7 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.ENUM('pending', 'paid', 'failed', 'refunded'),
     defaultValue: 'pending'
   },
+
   amount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
@@ -51,12 +45,9 @@ const Booking = sequelize.define('Booking', {
       min: 0
     }
   },
-  currency: {
-    type: DataTypes.STRING(3),
-    defaultValue: 'LKR'
-  },
+
   paymentMethod: {
-    type: DataTypes.ENUM('payhere', 'cash', 'card', 'bank_transfer'),
+    type: DataTypes.ENUM('payhere', 'cash', 'card', 'bank_transfer', 'VISA', 'MASTER', 'AMEX', 'DISCOVER'),
     allowNull: true
   },
   paymentReference: {
@@ -79,41 +70,7 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.JSON,
     defaultValue: []
   },
-  notes: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  cancellationReason: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  cancelledBy: {
-    type: DataTypes.UUID,
-    allowNull: true
-  },
-  cancelledAt: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
-  refundAmount: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    validate: {
-      min: 0
-    }
-  },
-  refundReason: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  checkInTime: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
-  checkOutTime: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
+
   rating: {
     type: DataTypes.INTEGER,
     allowNull: true,
@@ -142,26 +99,7 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  paymentOtpCode: {
-    type: DataTypes.STRING(6),
-    allowNull: true
-  },
-  paymentOtpExpiresAt: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
-  paymentOtpVerified: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  reminderSent: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  reminderSentAt: {
-    type: DataTypes.DATE,
-    allowNull: true
-  }
+
 }, {
   tableName: 'bookings',
   indexes: [
@@ -191,7 +129,7 @@ Booking.prototype.canBeCancelled = function() {
   const bookingDateTime = new Date(`${this.bookingDate}T${this.startTime}`);
   const hoursUntilBooking = (bookingDateTime - now) / (1000 * 60 * 60);
   
-  return hoursUntilBooking >= 2; // Can cancel up to 2 hours before
+  return hoursUntilBooking >= 2; // Can cancel up to 2 hours before not implemented 
 };
 
 Booking.prototype.getRefundAmount = function() {
@@ -218,7 +156,6 @@ Booking.prototype.getRefundAmount = function() {
 Booking.prototype.toJSON = function() {
   const values = Object.assign({}, this.get());
   
-  // Add computed fields
   values.isActive = this.isActive();
   values.isCompleted = this.isCompleted();
   values.isCancelled = this.isCancelled();
@@ -229,7 +166,7 @@ Booking.prototype.toJSON = function() {
   return values;
 };
 
-// Use existing otpExpiresAt field for slot reservation
+// Using existing otpExpiresAt field for slot reservation
 Booking.prototype.isReserved = function() {
   return this.status === 'pending' && this.otpExpiresAt && new Date() < this.otpExpiresAt;
 };
@@ -253,7 +190,7 @@ Booking.prototype.getReservationStatus = function() {
   return 'pending';
 };
 
-Booking.prototype.reserveSlot = function(minutes = 15) {
+Booking.prototype.reserveSlot = function(minutes = 5) {
   const now = new Date();
   this.otpExpiresAt = new Date(now.getTime() + minutes * 60 * 1000);
   this.status = 'pending';
@@ -324,7 +261,7 @@ Booking.findExpiredReservations = function() {
   });
 };
 
-// Check if a specific time slot is currently reserved
+// Checking if a specific time slot is currently reserved
 Booking.isSlotReserved = function(venueId, date, startTime, endTime) {
   const now = new Date();
   return this.findOne({
@@ -333,7 +270,7 @@ Booking.isSlotReserved = function(venueId, date, startTime, endTime) {
       bookingDate: date,
       status: 'pending',
       otpExpiresAt: {
-        [Op.gt]: now // Still valid reservation
+        [Op.gt]: now 
       },
       [Op.or]: [
         {
@@ -354,18 +291,18 @@ Booking.getCurrentReservations = function(venueId, date) {
       bookingDate: date,
       status: 'pending',
       otpExpiresAt: {
-        [Op.gt]: now // Still valid reservation
+        [Op.gt]: now 
       }
     },
     attributes: ['startTime', 'endTime', 'otpExpiresAt']
   });
 };
 
-// Check if a slot is available for booking (not booked or reserved)
+// Checking if a slot is available for booking (not booked or reserved)
 Booking.isSlotAvailable = async function(venueId, date, startTime, endTime) {
   const now = new Date();
   
-  // Check for existing bookings or reservations
+  // Checking for existing bookings or reservations
   const existing = await this.findOne({
     where: {
       venueId,

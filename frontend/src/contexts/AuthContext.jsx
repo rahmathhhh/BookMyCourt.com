@@ -129,12 +129,10 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: 'AUTH_START' });
       const response = await authService.register(userData);
       
-      const { user } = response.data.data;
-      
       // Don't automatically log in - wait for OTP verification
       dispatch({ type: 'LOGOUT' });
       
-      return { success: true, user };
+      return { success: true, registrationData: userData };
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
       dispatch({
@@ -167,9 +165,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Verify OTP
-  const verifyOTP = async (otp, userId) => {
+  const verifyOTP = async (otp, registrationData) => {
     try {
-      const response = await authService.verifyOTP(otp, userId);
+      const response = await authService.verifyOTP(otp, registrationData);
       const { user, token } = response.data.data;
       
       // Log in user after successful OTP verification

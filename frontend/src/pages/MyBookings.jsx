@@ -181,4 +181,4 @@ const MyBookings = () => {
   );
 };
 
-export default MyBookings; 
+export default MyBookings;  

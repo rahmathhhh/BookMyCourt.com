@@ -59,46 +59,7 @@ const User = sequelize.define('User', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
-  profilePicture: {
-    type: DataTypes.STRING(255),
-    allowNull: true
-  },
-  dateOfBirth: {
-    type: DataTypes.DATEONLY,
-    allowNull: true
-  },
-  gender: {
-    type: DataTypes.ENUM('male', 'female', 'other'),
-    allowNull: true
-  },
-  address: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  city: {
-    type: DataTypes.STRING(50),
-    allowNull: true
-  },
-  postalCode: {
-    type: DataTypes.STRING(10),
-    allowNull: true
-  },
-  latitude: {
-    type: DataTypes.DECIMAL(10, 8),
-    allowNull: true
-  },
-  longitude: {
-    type: DataTypes.DECIMAL(11, 8),
-    allowNull: true
-  },
-  preferences: {
-    type: DataTypes.JSON,
-    defaultValue: {}
-  },
-  lastLoginAt: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
+
   emailVerifiedAt: {
     type: DataTypes.DATE,
     allowNull: true

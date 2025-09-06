@@ -8,7 +8,7 @@ const Venues = () => {
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Get search parameters from URL (set by homepage search)
+  // Get search parameters from homepage
   const [searchTerm, setSearchTerm] = useState(searchParams.get('location') || '');
   const [selectedSport, setSelectedSport] = useState(searchParams.get('sport') || '');
   const [selectedCity, setSelectedCity] = useState('');
@@ -172,7 +172,7 @@ const Venues = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <span className="font-medium">
-                  📍 Showing venues within {searchRadius}km of your location
+                 Showing venues within {searchRadius}km of your location
                 </span>
                 <button
                   onClick={() => {
@@ -332,7 +332,22 @@ const Venues = () => {
             </div>
           ) : filteredVenues.length === 0 ? (
             <div className="text-center py-16 bg-gray-50 rounded-xl">
-              <div className="text-6xl mb-4">🏟️</div>
+              <div className="w-20 h-20 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="w-12 h-12" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="60" cy="60" r="58" fill="#2563EB" opacity="0.1"/>
+                  <rect x="25" y="35" width="70" height="50" rx="8" fill="#2563EB" opacity="0.3"/>
+                  <line x1="60" y1="35" x2="60" y2="85" stroke="#2563EB" strokeWidth="2"/>
+                  <circle cx="60" cy="60" r="12" fill="none" stroke="#2563EB" strokeWidth="2"/>
+                  <line x1="25" y1="50" x2="25" y2="70" stroke="#2563EB" strokeWidth="3"/>
+                  <line x1="95" y1="50" x2="95" y2="70" stroke="#2563EB" strokeWidth="3"/>
+                  <circle cx="40" cy="25" r="6" fill="#F59E0B"/>
+                  <path d="M34 25 Q40 20 46 25" stroke="#F59E0B" strokeWidth="2" fill="none"/>
+                  <circle cx="80" cy="25" r="6" fill="#10B981"/>
+                  <path d="M74 25 Q80 20 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+                  <path d="M74 25 Q80 30 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+                  <text x="60" y="105" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="#2563EB">BC</text>
+                </svg>
+              </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">No venues found</h3>
               <p className="text-gray-600 mb-6">
                 {venues.length === 0 
@@ -364,7 +379,22 @@ const Venues = () => {
                     ) : (
                       <div className="bg-gradient-to-br from-blue-400 to-blue-600 h-full flex items-center justify-center">
                         <div className="text-center text-white">
-                          <div className="text-5xl mb-3">🏟️</div>
+                          <div className="w-16 h-16 mx-auto mb-3 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                            <svg className="w-10 h-10" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="60" cy="60" r="58" fill="#FFFFFF" opacity="0.9"/>
+                              <rect x="25" y="35" width="70" height="50" rx="8" fill="#FFFFFF" opacity="0.8"/>
+                              <line x1="60" y1="35" x2="60" y2="85" stroke="#2563EB" strokeWidth="2"/>
+                              <circle cx="60" cy="60" r="12" fill="none" stroke="#2563EB" strokeWidth="2"/>
+                              <line x1="25" y1="50" x2="25" y2="70" stroke="#2563EB" strokeWidth="3"/>
+                              <line x1="95" y1="50" x2="95" y2="70" stroke="#2563EB" strokeWidth="3"/>
+                              <circle cx="40" cy="25" r="6" fill="#F59E0B"/>
+                              <path d="M34 25 Q40 20 46 25" stroke="#F59E0B" strokeWidth="2" fill="none"/>
+                              <circle cx="80" cy="25" r="6" fill="#10B981"/>
+                              <path d="M74 25 Q80 20 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+                              <path d="M74 25 Q80 30 86 25" stroke="#10B981" strokeWidth="2" fill="none"/>
+                              <text x="60" y="105" textAnchor="middle" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="#2563EB">BC</text>
+                            </svg>
+                          </div>
                           <p className="text-lg font-semibold">{venue.sportType} Court</p>
                         </div>
                       </div>

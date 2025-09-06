@@ -8,7 +8,7 @@ const { body, validationResult } = require('express-validator');
 const sequelize = require('../config/database');
 const { sendBookingConfirmation, sendOTP } = require('../services/smsService');
 const AvailableSlot = require('../models/AvailableSlot');
-const { Op } = require('sequelize'); // Added Op for cleanup endpoint
+const { Op } = require('sequelize'); 
 
 // Helper function to calculate duration in minutes
 const calculateDuration = (startTime, endTime) => {
@@ -18,20 +18,20 @@ const calculateDuration = (startTime, endTime) => {
   let startMinutes = startHour * 60 + startMin;
   let endMinutes = endHour * 60 + endMin;
   
-  // Handle case where end time is on next day (e.g., 00:00)
+  // Handle case where end time is on next day (00:00)
   if (endMinutes < startMinutes) {
-    endMinutes += 24 * 60; // Add 24 hours
+    endMinutes += 24 * 60; 
   }
   
   return endMinutes - startMinutes;
 };
 
-// @route   GET /api/bookings/my-bookings
-// @desc    Get current user's bookings
-// @access  Private
+// GET /api/bookings/my-bookings
+//Get current user's bookings
+
 router.get('/my-bookings', authenticateToken, async (req, res) => {
   try {
-    console.log('🔍 Fetching bookings for user:', req.user.id);
+    console.log(' MY-BOOKINGS ROUTE: Fetching bookings for user:', req.user.id, 'Role:', req.user.role);
     
     const bookings = await Booking.findAll({
       where: { userId: req.user.id },
@@ -52,7 +52,7 @@ router.get('/my-bookings', authenticateToken, async (req, res) => {
       data: { bookings }
     });
   } catch (error) {
-    console.error('❌ Error fetching user bookings:', error);
+    console.error(' Error fetching user bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch bookings',
@@ -61,17 +61,27 @@ router.get('/my-bookings', authenticateToken, async (req, res) => {
   }
 });
 
-// @route   GET /api/bookings
-// @desc    Get all bookings (for admin/staff)
-// @access  Private
+// GET /api/bookings
+//Get bookings (user's own bookings, or all for admin/staff)
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    console.log('🔍 GENERAL BOOKINGS ROUTE: User:', req.user.id, 'Role:', req.user.role);
     const { venueId, status, date } = req.query;
     const whereClause = {};
     
-    if (venueId) whereClause.venueId = venueId;
-    if (status) whereClause.status = status;
-    if (date) whereClause.bookingDate = date;
+    // SECURITY FIX: Only admins and staff can see all bookings
+    if (req.user.role === 'admin' || req.user.role === 'staff') {
+      // Admins and staff can see all bookings
+      if (venueId) whereClause.venueId = venueId;
+      if (status) whereClause.status = status;
+      if (date) whereClause.bookingDate = date;
+    } else {
+      // Regular users can only see their own bookings
+      whereClause.userId = req.user.id;
+      if (venueId) whereClause.venueId = venueId;
+      if (status) whereClause.status = status;
+      if (date) whereClause.bookingDate = date;
+    }
 
     const bookings = await Booking.findAll({
       where: whereClause,
@@ -110,7 +120,6 @@ router.get('/slots', async (req, res) => {
     return res.status(400).json({ success: false, message: 'venueId and date are required' });
   }
   try {
-    // Clean up any expired reservations for this venue/date immediately
     const now = new Date();
     const expiredReservations = await Booking.findAll({
       where: {
@@ -122,12 +131,16 @@ router.get('/slots', async (req, res) => {
     });
     
     if (expiredReservations.length > 0) {
-      // Mark expired reservations as expired
-      await Promise.all(expiredReservations.map(booking => {
-        booking.status = 'expired';
-        return booking.save();
-      }));
-      console.log(`🧹 Cleaned up ${expiredReservations.length} expired reservations for ${venueId} on ${date}`);
+      // Delete expired reservations completely since they're no longer valid
+      await Booking.destroy({
+        where: {
+          venueId,
+          bookingDate: date,
+          status: 'pending',
+          otpExpiresAt: { [Op.lt]: now }
+        }
+      });
+      console.log(` Deleted ${expiredReservations.length} expired reservations for ${venueId} on ${date}`);
     }
 
     const bookings = await Booking.findAll({
@@ -143,7 +156,6 @@ router.get('/slots', async (req, res) => {
       where: { venueId, date },
       attributes: ['startTime', 'endTime', 'isBlocked']
     });
-    // Was availability configured for this date (even if empty set to intentionally close)?
     const staffConfigured = availability.length > 0 || (await AvailableSlot.count({ where: { venueId, date } })) > 0;
 
     res.json({ success: true, data: { bookings, availability, staffConfigured } });
@@ -162,7 +174,7 @@ router.post('/cleanup-expired', async (req, res) => {
       where: {
         status: 'pending',
         otpExpiresAt: {
-          [Op.lt]: now // Less than current time
+          [Op.lt]: now 
         }
       }
     });
@@ -183,9 +195,9 @@ router.post('/cleanup-expired', async (req, res) => {
 
 
 
-// @route   POST /api/bookings/initiate
-// @desc    Initiate a booking and send OTP for confirmation
-// @access  Private
+// POST /api/bookings/initiate
+// Initiate a booking and send OTP for confirmation
+
 router.post(
   '/initiate',
   authenticateToken,
@@ -228,7 +240,7 @@ router.post(
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-      // Create temporary booking with OTP
+      
       const booking = await Booking.create({
         userId,
         venueId,
@@ -247,7 +259,7 @@ router.post(
         otpVerified: false
       });
 
-      // Send OTP via SMS asynchronously (do not block the API response)
+      // Send OTP via SMS async
       (async () => {
         try {
           const user = await User.findByPk(userId);
@@ -289,8 +301,7 @@ router.post(
 );
 
 // @route   POST /api/bookings/verify-otp
-// @desc    Verify booking OTP and confirm booking
-// @access  Private
+//  Verify booking OTP and confirm booking not used now
 router.post(
   '/verify-otp',
   authenticateToken,
@@ -361,9 +372,9 @@ router.post(
   }
 );
 
-// @route   POST /api/bookings
-// @desc    Create a new booking with slot-locking/concurrency handling
-// @access  Private
+// POST /api/bookings
+// Create a new booking with slot-locking/concurrency handling
+
 router.post(
   '/',
   authenticateToken,
@@ -391,7 +402,6 @@ router.post(
     const { venueId, bookingDate, startTime, endTime, amount, currency, players, specialRequests, equipment } = req.body;
     const userId = req.user.id;
 
-    // Use a transaction for atomicity
     const t = await sequelize.transaction();
     try {
       // Check for conflicts including reserved slots
@@ -406,7 +416,7 @@ router.post(
 
       // Create new booking with reservation time already set
       const now = new Date();
-      const reservationExpiry = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes from now
+      const reservationExpiry = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
       
       const booking = await Booking.create({
         userId,
@@ -422,7 +432,7 @@ router.post(
         equipment,
         status: 'pending',
         paymentStatus: 'pending',
-        otpExpiresAt: reservationExpiry // Set reservation expiry directly
+        otpExpiresAt: reservationExpiry 
       }, { transaction: t });
 
       await t.commit();
@@ -444,9 +454,8 @@ router.post(
   }
 );
 
-// @route   POST /api/bookings/resend-otp
-// @desc    Resend OTP for booking confirmation
-// @access  Private
+// POST /api/bookings/resend-otp
+// Resend OTP for booking confirmation
 router.post(
   '/resend-otp',
   authenticateToken,
@@ -486,7 +495,7 @@ router.post(
       booking.otpExpiresAt = otpExpiry;
       await booking.save();
 
-      // Send new OTP via SMS asynchronously (do not block the API response)
+      // Send new OTP via SMS async
       (async () => {
         try {
           const user = await User.findByPk(userId);
@@ -515,5 +524,129 @@ router.post(
     }
   }
 );
+
+// POST /api/bookings/:id/review
+// Submit a review for a completed booking
+router.post('/:id/review', authenticateToken, [
+  body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be between 1 and 5'),
+  body('review').optional().trim().isLength({ max: 1000 }).withMessage('Review must be less than 1000 characters')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { rating, review } = req.body;
+    const bookingId = req.params.id;
+    const userId = req.user.id;
+
+    // Find the booking
+    const booking = await Booking.findOne({
+      where: {
+        id: bookingId,
+        userId: userId,
+        status: 'completed' // allowing reviews for completed bookings only
+      },
+      include: [
+        {
+          model: Venue,
+          as: 'venue',
+          attributes: ['id', 'name']
+        }
+      ]
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found or not eligible for review'
+      });
+    }
+
+    // Check if already reviewed
+    if (booking.rating) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reviewed this booking'
+      });
+    }
+
+    // Update booking with review
+    await booking.update({
+      rating: rating,
+      review: review,
+      reviewedAt: new Date()
+    });
+
+    // Update venues rating
+    const venueReviews = await Booking.findAll({
+      where: {
+        venueId: booking.venueId,
+        rating: { [Op.ne]: null }
+      },
+      attributes: ['rating']
+    });
+
+    if (venueReviews.length > 0) {
+      const totalRating = venueReviews.reduce((sum, b) => sum + b.rating, 0);
+      const averageRating = (totalRating / venueReviews.length).toFixed(1);
+      
+      await Venue.update(
+        { 
+          rating: parseFloat(averageRating),
+          totalReviews: venueReviews.length
+        },
+        { where: { id: booking.venueId } }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Review submitted successfully',
+      data: {
+        rating: booking.rating,
+        review: booking.review,
+        reviewedAt: booking.reviewedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Review submission error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit review',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// POST /api/bookings/auto-complete
+// Auto-complete bookings that have passed their end time
+
+router.post('/auto-complete', authenticateToken, async (req, res) => {
+  try {
+    const { autoCompleteBookings } = require('../services/bookingService');
+    
+    const result = await autoCompleteBookings();
+    
+    res.json({
+      success: true,
+      message: `Auto-completed ${result.completedCount} bookings`,
+      data: result
+    });
+  } catch (error) {
+    console.error('Auto-complete error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to auto-complete bookings',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 
 module.exports = router; 

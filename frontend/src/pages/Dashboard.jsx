@@ -4,7 +4,7 @@ import VenueMap from '../components/UI/VenueMap';
 import api from '../services/authService';
 
 const Dashboard = () => {
-  const { user, isLoading, token } = useAuth(); // Make sure token is available
+  const { user, isLoading, token } = useAuth(); 
   const [users, setUsers] = useState([]);
   const [venues, setVenues] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -20,12 +20,12 @@ const Dashboard = () => {
   const [availabilityMsg, setAvailabilityMsg] = useState('');
   const [availabilityChanged, setAvailabilityChanged] = useState(false);
 
-  // Helper to generate 1-hour slots based on opening hours
+  // generate 1 hour slots based on opening hours
   const generateSlots = (openingHours, date) => {
     const day = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     let hours = openingHours[day];
     
-    // Fallback to default if missing or invalid
+    // default if missing or invalid
     if (!hours || (typeof hours === 'object' && (!hours.open || !hours.close))) {
       hours = { open: '08:00', close: '24:00' };
     }
@@ -55,7 +55,7 @@ const Dashboard = () => {
     return slots;
   };
 
-  // Management action handlers (to be implemented)
+  // Management action handlers 
   const [editUserId, setEditUserId] = useState(null);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '', phone: '', role: '' });
   const [actionMsg, setActionMsg] = useState('');
@@ -107,7 +107,7 @@ const Dashboard = () => {
   };
   
   const [venueLocation, setVenueLocation] = useState(null);
-  const [activeTab, setActiveTab] = useState('users'); // Track active tab
+  const [activeTab, setActiveTab] = useState('users'); 
 
   const handleStaffInput = (e) => {
     setStaffForm({ ...staffForm, [e.target.name]: e.target.value });
@@ -252,7 +252,7 @@ const Dashboard = () => {
       fetchUsers();
       
     } catch (err) {
-      console.error('❌ Staff assignment error:', err);
+      console.error(' Staff assignment error:', err);
       setStaffAssignmentMsg(
         err.response?.data?.message || 
         'Failed to update staff venue assignment'
@@ -392,8 +392,7 @@ const Dashboard = () => {
         });
       }
       
-      // Debug: Log the form data being sent
-      console.log('🔍 Frontend: Sending venue form data with images:', venueForm.images?.length || 0);
+      console.log(' Frontend: Sending venue form data with images:', venueForm.images?.length || 0);
       
       await api.post('/admin/venues', formData, {
         headers: {
@@ -534,9 +533,15 @@ const Dashboard = () => {
 
   const fetchStaffSchedule = async () => {
     try {
+      console.log('🔍 Frontend: Fetching staff schedule for user:', user?.id);
       const scheduleRes = await api.get('/admin/staff/schedule');
-      setBookings(scheduleRes.data.data.bookings || []);
+      console.log('🔍 Frontend: Staff schedule response:', scheduleRes.data);
+      
+      const bookings = scheduleRes.data.data.bookings || [];
+      console.log('🔍 Frontend: Processed bookings:', bookings);
+      setBookings(bookings);
     } catch (err) {
+      console.error(' Frontend: Staff schedule error:', err);
       setBookings([]);
       setActionMsg('Failed to fetch staff schedule');
     }
@@ -545,14 +550,16 @@ const Dashboard = () => {
   const fetchStaffVenues = async () => {
     try {
       setStaffLoading(true);
-      console.log('🔍 Frontend: Fetching staff venues for user:', user?.id);
+      console.log(' Frontend: Fetching staff venues for user:', user?.id);
       
       const venuesRes = await api.get('/admin/staff/my-venues');
-      console.log('🔍 Frontend: Staff venues response:', venuesRes.data);
+      console.log(' Frontend: Staff venues response:', venuesRes.data);
       
-      setStaffVenues(venuesRes.data.data.venues || []);
+      const venues = venuesRes.data.data.venues || [];
+      console.log(' Frontend: Processed venues:', venues);
+      setStaffVenues(venues);
     } catch (err) {
-      console.error('❌ Frontend: Staff venues error:', err);
+      console.error(' Frontend: Staff venues error:', err);
       setStaffVenues([]);
     } finally {
       setStaffLoading(false);
@@ -572,7 +579,7 @@ const Dashboard = () => {
       const res = await api.get(url);
       setBookings(res.data.data.bookings || []);
     } catch (err) {
-      console.error('❌ Fetch bookings error:', err);
+      console.error(' Fetch bookings error:', err);
       setBookings([]);
     } finally {
       setLoading(false);
@@ -583,25 +590,28 @@ const Dashboard = () => {
     if (!availabilityVenueId || !availabilityDate) return;
     setAvailabilityMsg('');
     try {
-      console.log('🔍 Frontend: Fetching availability for:', { availabilityVenueId, availabilityDate });
+      console.log(' Frontend: Fetching availability for:', { availabilityVenueId, availabilityDate });
       
       const availRes = await api.get(`/admin/staff/availability`, {
         params: { venueId: availabilityVenueId, date: availabilityDate }
       });
 
-      console.log('🔍 Frontend: Availability response:', availRes.data);
+      console.log(' Frontend: Availability response:', availRes.data);
 
       const venue = staffVenues.find(v => v.id === availabilityVenueId);
+      console.log(' Frontend: Selected venue:', venue);
+      console.log(' Frontend: Venue opening hours:', venue?.openingHours);
       const baseGrid = generateSlots(venue?.openingHours || {}, availabilityDate);
+      console.log(' Frontend: Generated base grid:', baseGrid);
 
       const blockedSlots = availRes.data?.data?.blockedSlots || [];
       const bookedSlots = availRes.data?.data?.bookedSlots || [];
       
-      console.log('🔍 Frontend: Processing slots:', { blockedSlots: blockedSlots.length, bookedSlots: bookedSlots.length });
-      console.log('🔍 Frontend: Booked slots data:', bookedSlots);
-      console.log('🔍 Frontend: Blocked slots data:', blockedSlots);
+      console.log(' Frontend: Processing slots:', { blockedSlots: blockedSlots.length, bookedSlots: bookedSlots.length });
+      console.log(' Frontend: Booked slots data:', bookedSlots);
+      console.log(' Frontend: Blocked slots data:', blockedSlots);
       
-      // Normalize time format to HH:MM (remove seconds)
+      // Normalize time format to HH:MM 
       const normalizeTime = (time) => time.substring(0, 5);
       
       const blockedSet = new Set(blockedSlots.filter(s => s.isBlocked).map(s => `${normalizeTime(s.startTime)}-${normalizeTime(s.endTime)}`));
@@ -612,18 +622,31 @@ const Dashboard = () => {
 
       const grid = baseGrid.map(s => {
         const key = `${s.startTime}-${s.endTime}`;
+        
+        // Check if this slot is booked by checking if any booking overlaps with this slot
+        const isBooked = bookedSlots.some(booking => {
+          const bookingStart = normalizeTime(booking.startTime);
+          const bookingEnd = normalizeTime(booking.endTime);
+          const slotStart = s.startTime;
+          const slotEnd = s.endTime;
+          
+          // Check if booking overlaps with this slot
+          return (bookingStart < slotEnd && bookingEnd > slotStart);
+        });
+        
         return {
           ...s,
-          booked: bookedSet.has(key),
+          booked: isBooked,
           blocked: blockedSet.has(key)
         };
       });
 
-      console.log('🔍 Frontend: Final grid:', grid.length, 'slots');
+      console.log(' Frontend: Final grid:', grid.length, 'slots');
+      console.log(' Frontend: Grid details:', grid.map(s => `${s.startTime}-${s.endTime}: booked=${s.booked}, blocked=${s.blocked}`));
       setAvailabilitySlots(grid);
       setAvailabilityChanged(false);
     } catch (err) {
-      console.error('❌ Frontend: Availability error:', err);
+      console.error(' Frontend: Availability error:', err);
       setAvailabilitySlots([]);
       setAvailabilityMsg(err.response?.data?.message || 'Failed to fetch availability');
     }
@@ -667,6 +690,7 @@ const Dashboard = () => {
     }
   };
 
+
   const handleVenueMapClick = (loc) => {
     setVenueLocation(loc);
     setVenueForm({ ...venueForm, latitude: loc.lat, longitude: loc.lng });
@@ -705,6 +729,7 @@ const Dashboard = () => {
     if (user && user.role === 'admin') {
       fetchUsers();
       fetchVenues();
+      fetchBookings();
     } else if (user && user.role === 'staff') {
       fetchStaffVenues();
       fetchStaffSchedule();
@@ -718,7 +743,6 @@ const Dashboard = () => {
   }, [users.length]);
 
 
-
   // Initialize Google Maps Autocomplete for venue address
   useEffect(() => {
     const initializeAutocomplete = () => {
@@ -729,7 +753,7 @@ const Dashboard = () => {
           
           // Check if autocomplete is already initialized
           if (input.getAttribute('data-autocomplete-initialized')) {
-            console.log('✅ Autocomplete already initialized');
+            console.log(' Autocomplete already initialized');
             return;
           }
           
@@ -738,9 +762,9 @@ const Dashboard = () => {
           });
           
           autocomplete.addListener('place_changed', () => {
-            console.log('🎯 Place selected from autocomplete!');
+            console.log(' Place selected from autocomplete!');
             const place = autocomplete.getPlace();
-            console.log('📍 Place data:', place);
+            console.log(' Place data:', place);
             
             if (place.geometry) {
               // Extract city from address components
@@ -767,18 +791,21 @@ const Dashboard = () => {
                 lng: place.geometry.location.lng()
               });
               
-              console.log('✅ Form updated with place data');
+              console.log(' Form updated with place data');
             }
           });
           
           // Mark as initialized
           input.setAttribute('data-autocomplete-initialized', 'true');
-          console.log('✅ Autocomplete initialized successfully');
+          console.log(' Autocomplete initialized successfully');
         } else {
-          console.log('❌ venue-address input not found yet');
+          // Only log this error occasionally to avoid spam
+          if (Math.random() < 0.1) {
+            console.log(' venue-address input not found yet (this is normal if not on venues tab)');
+          }
         }
       } else {
-        console.log('❌ Google Maps not ready yet');
+        console.log(' Google Maps not ready yet');
       }
     };
 
@@ -906,7 +933,12 @@ const Dashboard = () => {
              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <button 
-                 onClick={() => document.getElementById('create-staff-section')?.scrollIntoView({ behavior: 'smooth' })}
+                 onClick={() => {
+                   setActiveTab('users');
+                   setTimeout(() => {
+                     document.getElementById('create-staff-section')?.scrollIntoView({ behavior: 'smooth' });
+                   }, 100);
+                 }}
                  className="flex flex-col items-center p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer"
                >
                  <svg className="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -916,7 +948,12 @@ const Dashboard = () => {
                </button>
                
                <button 
-                 onClick={() => setActiveTab('venues')}
+                 onClick={() => {
+                   setActiveTab('venues');
+                   setTimeout(() => {
+                     document.getElementById('venue-management-section')?.scrollIntoView({ behavior: 'smooth' });
+                   }, 100);
+                 }}
                  className="flex flex-col items-center p-4 bg-green-500 text-white rounded-lg hover:bg-green-600 cursor-pointer"
                >
                  <svg className="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -924,6 +961,7 @@ const Dashboard = () => {
                  </svg>
                  <span className="font-medium">Add Venue</span>
                </button>
+
              </div>
            </div>
          )}
@@ -1190,7 +1228,7 @@ const Dashboard = () => {
          
          {/* Venues Tab Content */}
          {user.role === 'admin' && activeTab === 'venues' && (
-           <div className="bg-white rounded-lg shadow-sm border p-6">
+           <div id="venue-management-section" className="bg-white rounded-lg shadow-sm border p-6">
              <h2 className="text-xl font-bold mb-4 text-gray-900">Venue Management</h2>
                            <form className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleVenueSubmit}>
                 <input name="name" value={venueForm.name} onChange={handleVenueInput} placeholder="Venue Name" className="input" required />
@@ -1456,10 +1494,7 @@ const Dashboard = () => {
            </div>
          )}
          
-         {/* Admin Bookings Tab Content */}
-
-         
-         
+         {/* Staff assigned*/}
           {user.role === 'staff' && (
             <>
               <h2 className="text-xl font-bold mb-4">My Assigned Venues</h2>
@@ -1468,7 +1503,7 @@ const Dashboard = () => {
                   {staffVenues.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {staffVenues.map(venue => (
-                        <div key={venue.id} className="card p-4">
+                        <div key={venue.id} className="bg-white rounded-lg shadow-sm border p-4">
                           <h3 className="font-semibold text-lg">{venue.name}</h3>
                           <p className="text-gray-600">{venue.sportType}</p>
                           <p className="text-sm text-gray-500">{venue.address}, {venue.city}</p>
@@ -1489,8 +1524,6 @@ const Dashboard = () => {
 
               <h2 className="text-xl font-bold mb-4">My Schedule</h2>
               
-
-              
               {loading ? <p>Loading schedule...</p> : (
                 <div>
                   {bookings.length > 0 ? (
@@ -1503,10 +1536,10 @@ const Dashboard = () => {
                                 {b.bookingDate} {b.startTime}-{b.endTime}
                               </div>
                               <div className="text-sm text-gray-600">
-                                Venue: {b.Venue?.name || 'Unknown'} ({b.Venue?.sportType || 'Unknown'})
+                                Venue: {b.venue?.name || 'Unknown'} ({b.venue?.sportType || 'Unknown'})
                               </div>
                               <div className="text-sm text-gray-600">
-                                User: {b.User?.firstName} {b.User?.lastName} ({b.User?.phone || 'No phone'})
+                                User: {b.user?.firstName} {b.user?.lastName} ({b.user?.phone || 'No phone'})
                               </div>
                             </div>
                             <div className="flex gap-2">
@@ -1539,20 +1572,19 @@ const Dashboard = () => {
               )}
 
               <h2 className="text-xl font-bold mt-10 mb-4">Manage Availability</h2>
-              <div className="card p-4 mb-6">
+              <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                  <select className="input" value={availabilityVenueId} onChange={e => setAvailabilityVenueId(e.target.value)}>
+                  <select className="input-field" value={availabilityVenueId} onChange={e => setAvailabilityVenueId(e.target.value)}>
                     <option value="">Select Venue</option>
                     {staffVenues.map(v => (
                       <option key={v.id} value={v.id}>{v.name} - {v.city}</option>
                     ))}
                   </select>
-                  <input type="date" className="input" value={availabilityDate} onChange={e => setAvailabilityDate(e.target.value)} />
+                  <input type="date" className="input-field" value={availabilityDate} onChange={e => setAvailabilityDate(e.target.value)} />
                   <button className="btn" onClick={fetchAvailability}>Load</button>
                 </div>
 
                 <div className="mb-2 text-sm text-gray-600">Click slots to toggle unavailable. Booked slots are red and cannot be changed.</div>
-                <div className="mb-2 text-sm text-gray-500">💡 Use "Cleanup Expired" to remove abandoned OTP bookings that block slots.</div>
                 
                 {/* Color Legend */}
                 <div className="flex items-center gap-3 mb-3 text-xs text-gray-700">
@@ -1593,9 +1625,8 @@ const Dashboard = () => {
                   )}
                 </div>
                 <div className="mt-3">
-                  <button className="btn" onClick={saveAvailability} disabled={!availabilityVenueId || !availabilityDate || !availabilityChanged}>Save Availability</button>
+                  <button className="btn" onClick={saveAvailability} disabled={!availabilityVenueId || !availabilityDate || !availabilityChanged}>Save Unavailability</button>
                   {availabilityChanged && <span className="ml-2 text-sm text-orange-600">You have unsaved changes</span>}
-                  <button className="btn btn-secondary ml-2" onClick={cleanupExpiredBookings}>Cleanup Expired</button>
                 </div>
                 {availabilityMsg && <div className="text-sm text-blue-600 mt-2">{availabilityMsg}</div>}
               </div>

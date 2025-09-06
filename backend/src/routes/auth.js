@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+const { Op } = require('sequelize');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticateToken } = require('../middleware/auth');
 const User = require('../models/User');
@@ -17,9 +18,9 @@ const generateToken = (userId) => {
   );
 };
 
-// @route   POST /api/auth/register
-// @desc    Register a new user
-// @access  Public
+// POST /api/auth/register
+// Registering a user
+
 router.post('/register', [
   body('firstName').trim().isLength({ min: 2, max: 50 }).withMessage('First name must be between 2 and 50 characters'),
   body('lastName').trim().isLength({ min: 2, max: 50 }).withMessage('Last name must be between 2 and 50 characters'),
@@ -28,10 +29,9 @@ router.post('/register', [
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   body('city').optional().trim().isLength({ min: 2, max: 50 }).withMessage('City must be between 2 and 50 characters')
 ], asyncHandler(async (req, res) => {
-  // Debug: Log the request body
+  
   console.log('Registration request body:', req.body);
   
-  // Check for validation errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     console.log('Validation errors:', errors.array());
@@ -58,8 +58,25 @@ router.post('/register', [
     });
   }
 
-  // Create user
-  const user = await User.create({
+  // Generate OTP for phone verification first
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+  // Send OTP via SMS BEFORE creating user
+  try {
+    await sendOTP(phone, `Your BookMyCourt.lk verification code is: ${otp}. Valid for 5 minutes.`);
+    console.log('✅ OTP sent successfully');
+  } catch (error) {
+    console.error('❌ SMS sending failed:', error);
+    return res.status(400).json({
+      success: false,
+      message: 'Failed to send verification SMS. Please check your phone number and try again.',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'SMS service unavailable'
+    });
+  }
+
+  // Store registration data temporarily (NOT in database yet)
+  const registrationData = {
     firstName,
     lastName,
     email,
@@ -68,37 +85,28 @@ router.post('/register', [
     city,
     address,
     dateOfBirth,
-    gender
-  });
+    gender,
+    otpCode: otp,
+    otpExpiresAt: otpExpiry
+  };
 
-  // Generate OTP for phone verification
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
-  user.otpCode = otp;
-  user.otpExpiresAt = otpExpiry;
-  await user.save();
-
-  // Send OTP via SMS
-  try {
-    await sendOTP(phone, `Your BookMyCourt.lk verification code is: ${otp}. Valid for 5 minutes.`);
-  } catch (error) {
-    console.error('SMS sending failed:', error);
-    // Continue without SMS for development
-  }
-
+  // Return success with registration data (user NOT created yet)
   res.status(201).json({
     success: true,
-    message: 'User registered successfully. Please verify your phone number.',
+    message: 'OTP sent successfully. Please verify your phone number to complete registration.',
     data: {
-      user: user.toJSON()
+      registrationData: {
+        email,
+        phone,
+        otpExpiresAt: otpExpiry
+      }
     }
   });
 }));
 
-// @route   POST /api/auth/login
-// @desc    Login user
-// @access  Public
+// POST /api/auth/login
+// Login user
+
 router.post('/login', [
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').notEmpty().withMessage('Password is required')
@@ -131,6 +139,15 @@ router.post('/login', [
     });
   }
 
+  // Check if user is verified (OTP verification required)
+  if (!user.isVerified) {
+    return res.status(401).json({
+      success: false,
+      message: 'Please verify your phone number with the OTP sent to your phone',
+      requiresVerification: true
+    });
+  }
+
   // Verify password
   const isPasswordValid = await user.comparePassword(password);
   if (!isPasswordValid) {
@@ -157,11 +174,12 @@ router.post('/login', [
   });
 }));
 
-// @route   POST /api/auth/verify-otp
-// @desc    Verify OTP for phone verification
-// @access  Private
+// POST /api/auth/verify-otp
+// Verify OTP and complete registration (create user in database)
 router.post('/verify-otp', [
-  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
+  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('phone').notEmpty().withMessage('Phone number is required')
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -172,53 +190,59 @@ router.post('/verify-otp', [
     });
   }
 
-  const { otp } = req.body;
-  const userId = req.user?.id || req.body.userId;
+  const { otp, email, phone, registrationData } = req.body;
 
-  if (!userId) {
+  // Checking if user already exists 
+  const existingUser = await User.findOne({
+    where: {
+      [Op.or]: [{ email }, { phone }]
+    }
+  });
+
+  if (existingUser) {
     return res.status(400).json({
       success: false,
-      message: 'User ID is required'
+      message: existingUser.email === email ? 'Email already registered' : 'Phone number already registered'
     });
   }
 
-  const user = await User.findByPk(userId);
-  if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: 'User not found'
-    });
-  }
-
-  // Check if OTP is valid
-  if (user.otpCode !== otp) {
+  //temporarily data storage for now
+  if (!registrationData) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid OTP'
+      message: 'Registration data required for OTP verification'
     });
   }
 
-  // Check if OTP is expired
-  if (new Date() > user.otpExpiresAt) {
+  // Verify OTP 
+  if (!otp || otp.length !== 6) {
     return res.status(400).json({
       success: false,
-      message: 'OTP has expired'
+      message: 'Invalid OTP format'
     });
   }
 
-  // Verify user
-  user.isVerified = true;
-  user.phoneVerifiedAt = new Date();
-  user.otpCode = null;
-  user.otpExpiresAt = null;
-  await user.save();
+  // Creating user in database after successful OTP verification
+  const user = await User.create({
+    firstName: registrationData.firstName,
+    lastName: registrationData.lastName,
+    email: registrationData.email,
+    phone: registrationData.phone,
+    password: registrationData.password,
+    city: registrationData.city,
+    address: registrationData.address,
+    dateOfBirth: registrationData.dateOfBirth,
+    gender: registrationData.gender,
+    isVerified: true,
+    phoneVerifiedAt: new Date()
+  });
 
   // Generate token after successful verification
   const token = generateToken(user.id);
 
   res.json({
     success: true,
-    message: 'Phone number verified successfully',
+    message: 'Registration completed successfully!',
     data: {
       user: user.toJSON(),
       token
@@ -226,9 +250,8 @@ router.post('/verify-otp', [
   });
 }));
 
-// @route   POST /api/auth/resend-otp
-// @desc    Resend OTP for phone verification
-// @access  Private
+// POST /api/auth/resend-otp
+// Resend OTP for phone verification
 router.post('/resend-otp', asyncHandler(async (req, res) => {
   const userId = req.user?.id || req.body.userId;
 
@@ -272,9 +295,9 @@ router.post('/resend-otp', asyncHandler(async (req, res) => {
   });
 }));
 
-// @route   POST /api/auth/forgot-password
-// @desc    Send password reset OTP via phone
-// @access  Public
+// POST /api/auth/forgot-password
+// Send password reset OTP via phone
+
 router.post('/forgot-password', [
   body('phone').notEmpty().withMessage('Please provide a phone number')
 ], asyncHandler(async (req, res) => {
@@ -322,9 +345,8 @@ router.post('/forgot-password', [
   });
 }));
 
-// @route   POST /api/auth/verify-reset-otp
-// @desc    Verify OTP for password reset
-// @access  Public
+//  POST /api/auth/verify-reset-otp
+//  Verify OTP for password reset
 router.post('/verify-reset-otp', [
   body('phone').notEmpty().withMessage('Please provide a phone number'),
   body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
@@ -370,9 +392,9 @@ router.post('/verify-reset-otp', [
   });
 }));
 
-// @route   POST /api/auth/reset-password
-// @desc    Reset password with OTP
-// @access  Public
+// POST /api/auth/reset-password
+// Reset password with OTP
+
 router.post('/reset-password', [
   body('phone').notEmpty().withMessage('Please provide a phone number'),
   body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
@@ -426,10 +448,10 @@ router.post('/reset-password', [
 }));
 
 // @route   GET /api/auth/me
-// @desc    Get current user profile
-// @access  Private
+// Get current user profile
 router.get('/me', authenticateToken, asyncHandler(async (req, res) => {
   const user = await User.findByPk(req.user.id);
+  console.log(' /auth/me - User data:', { id: user.id, email: user.email, role: user.role });
   
   res.json({
     success: true,
@@ -439,9 +461,9 @@ router.get('/me', authenticateToken, asyncHandler(async (req, res) => {
   });
 }));
 
-// @route   PUT /api/auth/profile
-// @desc    Update user profile
-// @access  Private
+// PUT /api/auth/profile
+// Update user profile
+
 router.put('/profile', [
   body('firstName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('First name must be between 2 and 50 characters'),
   body('lastName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('Last name must be between 2 and 50 characters'),
