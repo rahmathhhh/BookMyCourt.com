@@ -184,11 +184,16 @@ const startServer = async () => {
     setInterval(async () => {
       try {
         const result = await CleanupService.runFullCleanup();
-        if (result.expiredCount > 0 || result.otpCount > 0 || result.reservationCount > 0) {
-          // console.log(` Cleanup job: ${result.expiredCount} expired bookings, ${result.otpCount} expired OTPs, ${result.reservationCount} expired reservations cleaned up`);
+        
+        // Also auto-complete past bookings
+        const { autoCompleteBookings } = require('./services/bookingService');
+        const completionResult = await autoCompleteBookings();
+        
+        if (result.expiredCount > 0 || result.otpCount > 0 || result.reservationCount > 0 || completionResult.completedCount > 0) {
+          console.log(` Cleanup job: ${result.expiredCount} expired bookings, ${result.otpCount} expired OTPs, ${result.reservationCount} expired reservations, ${completionResult.completedCount} completed bookings`);
         }
       } catch (error) {
-        // console.error(' Cleanup job failed:', error);
+        console.error(' Cleanup job failed:', error);
       }
     }, 15 * 60 * 1000); // 15 minutes
 

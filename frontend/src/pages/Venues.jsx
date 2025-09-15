@@ -15,8 +15,19 @@ const Venues = () => {
   const [userLat, setUserLat] = useState(searchParams.get('lat') || null);
   const [userLng, setUserLng] = useState(searchParams.get('lng') || null);
   const [searchRadius, setSearchRadius] = useState(searchParams.get('radius') || '10');
-  const [locationInput, setLocationInput] = useState('');
+  const [locationInput, setLocationInput] = useState(searchParams.get('location') || '');
   const [locationLoading, setLocationLoading] = useState(false);
+
+  
+  useEffect(() => {
+    console.log('🔍 URL Parameters:', {
+      location: searchParams.get('location'),
+      sport: searchParams.get('sport'),
+      lat: searchParams.get('lat'),
+      lng: searchParams.get('lng'),
+      radius: searchParams.get('radius')
+    });
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -39,6 +50,7 @@ const Venues = () => {
         const res = await axios.get(url);
         setVenues(res.data.data.venues || []);
       } catch (err) {
+        console.error('🔍 Frontend: Venue fetch error:', err);
         setVenues([]);
       } finally {
         setLoading(false);
@@ -49,7 +61,8 @@ const Venues = () => {
 
   // Filter venues based on search and filters
   const filteredVenues = venues.filter(venue => {
-    const matchesSearch = !searchTerm || 
+    // Skip text filtering for location-based search (radius search handled by backend)
+    const matchesSearch = !searchTerm || searchTerm === 'Current Location' ||
       venue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       venue.city.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSport = !selectedSport || venue.sportType.toLowerCase() === selectedSport.toLowerCase();
@@ -239,29 +252,13 @@ const Venues = () => {
               {/* Location Input with Geolocation */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter city or use my location"
-                    value={locationInput}
-                    onChange={(e) => handleLocationInputChange(e.target.value)}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  />
-                  <button
-                    onClick={getCurrentLocation}
-                    disabled={locationLoading}
-                    className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center min-w-[60px]"
-                    title="Use My Location"
-                  >
-                    {locationLoading ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    ) : (
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  placeholder="Enter city or use my location"
+                  value={locationInput}
+                  onChange={(e) => handleLocationInputChange(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
               </div>
               
               {/* Sport Filter */}
@@ -445,7 +442,7 @@ const Venues = () => {
                   </div>
                 </div>
               ))}
-            </div>
+        </div>
           )}
         </div>
       </div>

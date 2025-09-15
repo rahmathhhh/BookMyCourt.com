@@ -25,8 +25,9 @@ router.get('/', async (req, res) => {
       const userLng = parseFloat(lng);
       const maxDistance = parseFloat(radius);
 
-      venues = venues.filter(v => {
-        if (v.latitude == null || v.longitude == null) return false;
+      const venuesWithCoords = venues.filter(v => v.latitude != null && v.longitude != null);
+      
+      venues = venuesWithCoords.filter(v => {
         const dLat = (parseFloat(v.latitude) - userLat) * Math.PI / 180;
         const dLng = (parseFloat(v.longitude) - userLng) * Math.PI / 180;
         const a =

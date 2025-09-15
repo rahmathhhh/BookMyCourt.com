@@ -521,31 +521,37 @@ router.get('/staff/:id/venues', requireAdmin, async (req, res) => {
 router.get('/staff/schedule', requireStaff, async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log(' Staff schedule request for user:', userId);
 
     // Get staff user with assigned venues via belongsToMany association
     const staff = await User.findByPk(userId, {
       include: [{
         model: Venue,
         as: 'assignedVenues',
-        attributes: ['id']
+        attributes: ['id', 'name']
       }]
     });
 
     if (!staff) {
+      console.log('❌ Staff not found for user:', userId);
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
+    console.log(' Staff found:', staff.firstName, staff.lastName);
+    console.log(' Assigned venues:', staff.assignedVenues);
+
     const venueIds = (staff.assignedVenues || []).map(v => v.id);
+    console.log(' Venue IDs:', venueIds);
 
     if (venueIds.length === 0) {
+      console.log('⚠️ No venues assigned to staff');
       return res.json({ success: true, data: { bookings: [] } });
     }
 
-    // Get bookings for assigned venues (pending and confirmed)
+    // Get bookings for assigned venues (all statuses)
     const bookings = await Booking.findAll({
       where: {
-        venueId: { [Op.in]: venueIds },
-        status: { [Op.in]: ['pending', 'confirmed'] }
+        venueId: { [Op.in]: venueIds }
       },
       include: [{
         model: Venue,
@@ -559,6 +565,16 @@ router.get('/staff/schedule', requireStaff, async (req, res) => {
       order: [['bookingDate', 'ASC'], ['startTime', 'ASC']]
     });
 
+    console.log('🔍 Found bookings:', bookings.length);
+    console.log('🔍 Bookings data:', bookings.map(b => ({
+      id: b.id,
+      venue: b.venue?.name,
+      user: `${b.user?.firstName} ${b.user?.lastName}`,
+      date: b.bookingDate,
+      time: `${b.startTime}-${b.endTime}`,
+      status: b.status
+    })));
+
     res.json({ success: true, data: { bookings } });
   } catch (error) {
     console.error('Failed to fetch staff schedule:', error);
@@ -570,6 +586,7 @@ router.get('/staff/schedule', requireStaff, async (req, res) => {
 router.get('/staff/my-venues', requireStaff, async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log('🔍 Staff venues request for user:', userId);
     
     // Get staff user with assigned venues via belongsToMany association
     const staff = await User.findByPk(userId, {
@@ -581,13 +598,54 @@ router.get('/staff/my-venues', requireStaff, async (req, res) => {
     });
 
     if (!staff) {
+      console.log('❌ Staff not found for user:', userId);
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
+    console.log('🔍 Staff venues found:', staff.assignedVenues?.length || 0);
     res.json({ success: true, data: { venues: staff.assignedVenues || [] } });
   } catch (error) {
     console.error('Failed to fetch staff venues:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch assigned venues' });
+  }
+});
+
+// Auto-assign all venues to staff (for testing/debugging)
+router.post('/staff/auto-assign-venues', requireStaff, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log('🔍 Auto-assigning venues to staff:', userId);
+
+    // Get all active venues
+    const venues = await Venue.findAll({
+      where: { isActive: true },
+      attributes: ['id']
+    });
+
+    if (venues.length === 0) {
+      return res.json({ success: false, message: 'No venues found to assign' });
+    }
+
+    // Remove existing assignments
+    await StaffVenue.destroy({ where: { staffId: userId } });
+
+    // Create new assignments
+    const venueAssignments = venues.map(venue => ({
+      staffId: userId,
+      venueId: venue.id
+    }));
+    
+    await StaffVenue.bulkCreate(venueAssignments);
+
+    console.log('✅ Auto-assigned', venues.length, 'venues to staff');
+    res.json({ 
+      success: true, 
+      message: `Auto-assigned ${venues.length} venues to staff`,
+      data: { assignedCount: venues.length }
+    });
+  } catch (error) {
+    console.error('Auto-assign venues error:', error);
+    res.status(500).json({ success: false, message: 'Failed to auto-assign venues' });
   }
 });
 
